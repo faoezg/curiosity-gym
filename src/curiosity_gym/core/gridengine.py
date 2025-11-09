@@ -11,6 +11,7 @@ from typing import Any
 
 import gymnasium as gym
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import numpy as np
 import pygame
 import pandas as pd
@@ -25,11 +26,14 @@ from curiosity_gym.utils.dataclasses import (
     EnvironmentObjects,
 )
 
+# TODO validate all doc strings in project for :class:
 class GridEngine(gym.Env, ABC):
     """Abstract grid-based environment class that implements the gymnasium api.
 
     Parameters
     ----------
+    env_name : str
+        Name of the environment
     env_settings : :class:`~curiosity_gym.utils.dataclasses.EnvironmentSettings`
         Object storing settings for the environment.
     render_settings : :class:`~curiosity_gym.utils.dataclasses.RenderSettings`
@@ -48,11 +52,13 @@ class GridEngine(gym.Env, ABC):
 
     def __init__(
         self,
+        env_name: str,
         env_settings: EnvironmentSettings,
         render_settings: RenderSettings,
         env_objects: EnvironmentObjects,
         agent_pov: AgentPOV | str,
     ) -> None:
+        self._name = env_name
         # Store settings
         self.env_settings = env_settings
         self.render_settings = render_settings
@@ -284,7 +290,7 @@ class GridEngine(gym.Env, ABC):
             state[x + y * self.env_settings.width] = ob.get_identity()
         return state
 
-    def heatmap(self) -> None:
+    def heatmap(self) -> Figure | None:
         """Display heatmap of position counts of the agent."""
         max_col = max(key[0] for key in self.pos_count.keys())
         max_row = max(key[1] for key in self.pos_count.keys())
@@ -296,7 +302,8 @@ class GridEngine(gym.Env, ABC):
             data.iat[row, col] = value
 
         plt.figure(figsize=(self.env_settings.width, self.env_settings.height))
-        sns.heatmap(data, cbar=True, cmap="Greens")
+        axes = sns.heatmap(data, cbar=True, cmap="Greens")
+        return axes.get_figure()
 
     def init_render(self) -> None:
         """Initialise render objects."""
@@ -494,3 +501,8 @@ class GridEngine(gym.Env, ABC):
                 np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
             )
         return None
+    
+    @property
+    def name(self) -> str:
+        """Getter for the environemt name"""
+        return self._name

@@ -106,6 +106,7 @@ class MultitaskEnv(GridEngine):
         )
 
         super().__init__(
+            env_name = "Multitask Environment",
             env_settings=env_settings,
             render_settings=render_settings,
             env_objects=env_objects,
