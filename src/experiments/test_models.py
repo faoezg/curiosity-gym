@@ -61,7 +61,8 @@ harness.run_model_n_episodes_per_environment(experiment_multi2, n)
 evaluator = ExperimentEvaluator(harness)
 evaluator.evaluate_entire_expermient()
 evaluator.print_summary()
-evaluator.save_environment_heatmaps(env_multitask2.name)
+# evaluator.save_environment_heatmaps(env_multitask2.name)
+
 
 
 # print("PPO - Sparse: ", test(model_sparse, env_sparse, n))

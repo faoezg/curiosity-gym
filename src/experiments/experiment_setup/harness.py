@@ -1,5 +1,6 @@
 from abc import ABC
 import copy
+from tqdm import tqdm
 
 from curiosity_gym.core.gridengine import GridEngine
 
@@ -29,19 +30,27 @@ class ExperimentHarness(ABC):
     def run_model_n_episodes_per_environment(self, experiment_model: ExperimentModel, episode_count: int) -> None:
         elapsed_episodes = 0
         # TODO Add progress bars to harness
-        while (elapsed_episodes < episode_count):
-            for env in self._environments:
-                self._simulate_next_step(experiment_model.model, env)
-                self._store_new_simulation_report(env, experiment_model.model_name)
-            elapsed_episodes += 1
+        with tqdm(total=episode_count) as episode_progressbar:
+            while (elapsed_episodes < episode_count):
+                for env in (environment_progressbar := tqdm(self._environments)):
+                    environment_progressbar.set_description(f"Processing environment {env.name}")
+                    self._simulate_next_step(experiment_model.model, env)
+                    self._store_new_simulation_report(env, experiment_model.model_name)
+                episode_progressbar.set_description(f"Processing Episode {elapsed_episodes}")
+                elapsed_episodes += 1
+                episode_progressbar.update(1)
 
     def run_model_n_time_steps_per_environment(self, experiment_model: ExperimentModel, evaluation_timesteps: int) -> None:
-        for env in self._environments:
+        for env in (environment_progressbar := tqdm(self._environments)):
+            environment_progressbar.set_description(f"Processing environment {env.name}")
             total_elapsed_time_steps_in_environment = self._get_total_elapsed_time_steps_in_environment(env.name, experiment_model.model_name)
-            while (total_elapsed_time_steps_in_environment < evaluation_timesteps):
-                self._simulate_next_step(experiment_model.model, env)
-                if (total_elapsed_time_steps_in_environment + self._current_environment_steps_taken < evaluation_timesteps):
-                    self._store_new_simulation_report(env, experiment_model.model_name)
+            with tqdm(total=evaluation_timesteps - total_elapsed_time_steps_in_environment) as timestep_progessbar:
+                while (total_elapsed_time_steps_in_environment < evaluation_timesteps):
+                    timestep_progessbar.set_description(f"Processing Timestep {self._current_environment_steps_taken}")
+                    self._simulate_next_step(experiment_model.model, env)
+                    timestep_progessbar.update(1)
+                    if (total_elapsed_time_steps_in_environment + self._current_environment_steps_taken < evaluation_timesteps):
+                        self._store_new_simulation_report(env, experiment_model.model_name)
 
     def _simulate_next_step(self, model: BaseAlgorithm, env: GridEngine) -> None:
         self._init_env(env)
