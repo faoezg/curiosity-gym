@@ -6,7 +6,10 @@ from stable_baselines3.common.base_class import BaseAlgorithm
 from curiosity_gym import DistractiveEnv, SparseEnv, MultitaskEnv
 from curiosity_gym.core.gridengine import GridEngine 
 
-# Define environments
+from experiments.experiment_setup.harness import ExperimentHarness
+from experiments.experiment_setup.experiment_model import ExperimentModel
+from experiments.experiment_setup.experiment_evaluator import ExperimentEvaluator
+
 pov = "local_2"
 env_sparse = SparseEnv(agentPOV=pov)
 env_distractive = DistractiveEnv(agentPOV=pov)
@@ -20,27 +23,6 @@ model_multitask2 = PPO("MlpPolicy", env_multitask1, verbose=1)
 
 def train_model(model: BaseAlgorithm, timesteps: int):
     model.learn(total_timesteps=timesteps)
-
-# Define test function
-def test(model, env, n):
-    score = 0
-    
-    for _ in range(n):
-        obs, info = env.reset()
-        terminated, truncated = False, False
-        returns = 0
-        while not (terminated or truncated):
-            action = model.predict(obs)
-            obs, reward, terminated, truncated, info = env.step(action[0])
-            returns += reward
-        score += returns
-    
-    return score / n
-
-
-from experiments.experiment_setup.harness import ExperimentHarness
-from experiments.experiment_setup.experiment_model import ExperimentModel
-from experiments.experiment_setup.experiment_evaluator import ExperimentEvaluator
 
 train_model(model_sparse, 200)
 train_model(model_distractive, 200)
@@ -62,10 +44,3 @@ evaluator = ExperimentEvaluator(harness)
 evaluator.evaluate_entire_expermient()
 evaluator.print_summary()
 # evaluator.save_environment_heatmaps(env_multitask2.name)
-
-
-
-# print("PPO - Sparse: ", test(model_sparse, env_sparse, n))
-# print("PPO - Distractive: ", test(model_distractive, env_distractive, n))
-# print("PPO - Multitask 1: ", test(model_multitask1, env_multitask1, n))
-# print("PPO - Multitask 2: ", test(model_multitask2, env_multitask2, n))
