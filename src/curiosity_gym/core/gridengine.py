@@ -139,27 +139,11 @@ class GridEngine(gym.Env, ABC):
         info : dict
             Contains auxiliary diagnostic information for debugging, learning and logging.
         """
-        reward = 0
-        for ob in self.objects.get_non_wall():
-            reward += ob.step(
-                self.agent_pov.transform_action(action),
-                self.find_object(self.objects.agent.get_front()),
-                self._check_walkable(self.objects.agent.get_front()),
-            )
-
         self.step_count += 1
         self.pos_count[tuple(self.objects.agent.position)] += 1
-
-        reward += (
-            (
-                self.env_settings.min_steps
-                / self.step_count
-                * self.env_settings.reward_range[1]
-            )
-            if self.check_task()
-            else 0
-        )
         obs = self._get_obs()
+
+        reward = self._calc_reward(action)
 
         if self.render_settings.render_mode == "human":
             pygame.display.set_caption(
@@ -174,6 +158,31 @@ class GridEngine(gym.Env, ABC):
             self._get_terminated(),
             self._get_truncated(),
             self._get_info(),
+        )
+
+    def _calc_reward(self, action: int | Action):
+        external_reward = self._calc_obj_reward(action) + self._calc_task_reward()
+        return external_reward
+   
+    def _calc_obj_reward(self, action: int | Action):
+        reward = 0
+        for ob in self.objects.get_non_wall():
+            reward += ob.step(
+                self.agent_pov.transform_action(action),
+                self.find_object(self.objects.agent.get_front()),
+                self._check_walkable(self.objects.agent.get_front()),
+            )
+        return reward
+    
+    def _calc_task_reward(self,):
+        return (
+            (
+                self.env_settings.min_steps
+                / self.step_count
+                * self.env_settings.reward_range[1]
+            )
+            if self.check_task()
+            else 0
         )
 
     def reset(self, **kwargs) -> tuple[np.ndarray, dict]:

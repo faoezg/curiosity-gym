@@ -29,7 +29,6 @@ class ExperimentHarness(ABC):
 
     def run_model_n_episodes_per_environment(self, experiment_model: ExperimentModel, episode_count: int) -> None:
         elapsed_episodes = 0
-        # TODO Add progress bars to harness
         with tqdm(total=episode_count) as episode_progressbar:
             while (elapsed_episodes < episode_count):
                 for env in (environment_progressbar := tqdm(self._environments)):
