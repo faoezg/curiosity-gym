@@ -22,27 +22,32 @@ def _setup_icm_for_env(env: GridEngine) -> ICMModel:
     observation_space_shape = env.observation_space.shape
     flattened_observation_space = observation_space_shape[0] * observation_space_shape[1]
     icm = ICMModel(
+        device = DEVICE,
         state_dim=flattened_observation_space, # type: ignore
-        action_dim=1, # type: ignore
+        action_dim=env.action_space.n, # type: ignore
         latent_rep_dim=32,
         hidden_dim=64,
         beta = .2,
-        eta = 0.01
+        eta = 0.01 
     ).to(DEVICE)
     return icm
 
 def _setup_base_envs() -> list[GridEngine]:
     envs = []
+    # TODO global bricks evaluation suit
+    # ValueError: Error: Unexpected observation shape (161, 3) for Box environment, 
+    # please use (165, 3) or (n_env, 165, 3) for the observation shape
     pov = "local_2"
-    env_sparse = SparseEnv(agentPOV=pov)
-    env_distractive = DistractiveEnv(agentPOV=pov)
-    env_multitask1 = MultitaskEnv(agentPOV=pov, task=1)
-    env_multitask2 = MultitaskEnv(agentPOV=pov, task=2)
+    render_mode = "human"
+    env_sparse = SparseEnv(agentPOV=pov, render_mode=render_mode)
+    #env_distractive = DistractiveEnv(agentPOV=pov,render_mode=render_mode)
+    #env_multitask1 = MultitaskEnv(agentPOV=pov, task=1, render_mode=render_mode)
+    #env_multitask2 = MultitaskEnv(agentPOV=pov, task=2, render_mode=render_mode)
 
     envs.append(env_sparse)
-    envs.append(env_distractive)
-    envs.append(env_multitask1)
-    envs.append(env_multitask2)
+    #envs.append(env_distractive)
+    #envs.append(env_multitask1)
+    #envs.append(env_multitask2)
     return envs
 
 def _setup_wrapped_envs() -> list[tuple[ICMCuriosityWrapper, str]]:
@@ -51,7 +56,7 @@ def _setup_wrapped_envs() -> list[tuple[ICMCuriosityWrapper, str]]:
     base_envs = _setup_base_envs()
     for env in base_envs:
         icm = _setup_icm_for_env(env)
-        wrapped_envs.append((ICMCuriosityWrapper(env, icm, ICM_LR), env.name))
+        wrapped_envs.append((ICMCuriosityWrapper(DEVICE, env, icm, ICM_LR), env.name))
     return wrapped_envs
 
 def _setup_vec_envs() -> list[tuple[VecNormalize, str]]:
@@ -69,7 +74,7 @@ def _setup_sb3_ppo_models() -> dict[str, PPO]:
 
     model_dict = {}
     for vec_env, env_name in vec_envs:
-        model_dict[env_name] = PPO("MlpPolicy", vec_env, verbose=1)
+        model_dict[env_name] = PPO("MlpPolicy", vec_env, verbose=1, clip_range=0.05, device=DEVICE)
     return model_dict
 
 def _train_ipo_models_with_icm(models: dict[str, PPO], timesteps: int):

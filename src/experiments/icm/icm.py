@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from torch import Tensor
+from torch import Tensor, device
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple
@@ -23,6 +23,7 @@ class ICMModel(nn.Module):
         Scaler of the intrinsic reward
     """
     def __init__(self,
+                 device: device,
                  state_dim: int,
                  action_dim: int,
                  latent_rep_dim: int,
@@ -31,6 +32,7 @@ class ICMModel(nn.Module):
                  eta: float
                  ):
                  super(ICMModel, self).__init__()
+                 self.device = device
                  self.action_dim = action_dim
                  self.beta = beta
                  self.eta = eta
@@ -72,11 +74,12 @@ class ICMModel(nn.Module):
         return phi, phi_next
 
     def pass_through_forward_model(self, state: Tensor, action: Tensor):
-        forward_input = torch.cat([state, action.unsqueeze(0)])
+        action_onehot = F.one_hot(action, num_classes=self.action_dim).float()
+        forward_input = torch.cat([state, action_onehot], dim=1)
         return self.forward_model(forward_input)
 
     def pass_through_inverse_model(self, state, next_state):
-        inv_input = torch.cat([state, next_state], dim=0) # Dim (Batch, 2 * state-space)
+        inv_input = torch.cat([state, next_state], dim=1) # Dim (Batch, 2 * state-space)
         inv_logits = self.invers_model(inv_input)         # Dim (Batch, state-space)
         return inv_logits
 
@@ -87,27 +90,31 @@ class ICMModel(nn.Module):
 
         self.eval() # no gradiants
         with torch.no_grad():
-         state_tensor = torch.tensor(state, dtype=torch.float32).flatten(0)
-         next_state_tensor = torch.tensor(next_state, dtype=torch.float32).flatten(0)
-         action_tensor = torch.tensor(action, dtype=torch.long)
+         state_tensor = torch.tensor(state, dtype=torch.float32, device=self.device).flatten(0).unsqueeze(0)
+         next_state_tensor = torch.tensor(next_state, dtype=torch.float32, device=self.device).flatten(0).unsqueeze(0)
+         action_tensor = torch.tensor([action], dtype=torch.long, device=self.device)
 
          _, phi_next, forward_pred, _ = self.forward(state_tensor, next_state_tensor, action_tensor)
 
          intrinsic_reward = self.calc_forward_loss(forward_pred, phi_next).item()
          return self.eta * intrinsic_reward
     
-    def calc_forward_loss(self, forward_pred, next_state) -> Tensor:
+    def calc_forward_loss(self, forward_pred: Tensor, next_state: Tensor) -> Tensor:
         return 0.5 * F.mse_loss(forward_pred, next_state, reduction="mean")
     
-    def calc_icm_loss(self, state, next_state, action) -> Tuple[Tensor, Tensor]:
+    def calc_icm_loss(self, state: Tensor, next_state: Tensor, action: Tensor) -> Tuple[Tensor, Tensor]:
         _, phi_next, forward_pred, inv_logits = self.forward(state, next_state, action)
-        inv_loss = F.softmax(inv_logits, dim=-1)
+        inv_loss = F.cross_entropy(inv_logits, action, reduction="mean")
         forward_loss = self.calc_forward_loss(forward_pred, phi_next)
         return inv_loss, forward_loss
     
     def create_encoder_model(self, state_dim, hidden_dim, latent_rep_dim) -> nn.Sequential:
         return nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, latent_rep_dim)
         )
@@ -117,6 +124,10 @@ class ICMModel(nn.Module):
         return nn.Sequential(
             nn.Linear(latent_rep_dim + action_dim, hidden_dim),
             nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
             nn.Linear(hidden_dim, latent_rep_dim)
         )
 
@@ -124,6 +135,10 @@ class ICMModel(nn.Module):
         """(phi(s), phi(s')) -> action_hat"""
         return nn.Sequential(
             nn.Linear(2 * latent_rep_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, action_dim)
         )
