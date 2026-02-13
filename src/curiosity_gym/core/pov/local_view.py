@@ -42,16 +42,18 @@ class LocalView(AgentPOV):
     def transform_obs(self, state: np.ndarray, agent: Agent) -> np.ndarray:
         self.visible_positions = []
         pos = agent.position.tolist()
-        local = np.full(((self.radius * 2 + 1) ** 2, 3), [0, 0, 0])
+        local = np.full(((self.radius * 2 + 1) ** 2, 3), [0, 0, 0], dtype=float)
         for x in range(-self.radius, self.radius + 1):
             for y in range(-self.radius, self.radius + 1):
-                ix = (pos[0] + x) + self.width * (pos[1] + y)
-                ix_new = self.radius + x + (self.radius * 2 + 1) * (self.radius + y)
-                cell = (pos[0] + x, pos[1] + y)
+                visible_y_coor = pos[1] + y
+                if (visible_y_coor < self.height):
+                    ix = (pos[0] + x) + self.width * (visible_y_coor)
+                    ix_new = self.radius + x + (self.radius * 2 + 1) * (self.radius + y)
+                    cell = (pos[0] + x, visible_y_coor)
 
-                if ix < 0 or (not self.is_visible(state, pos, cell) and not self.xray):
-                    continue
+                    if ix < 0 or (not self.is_visible(state, pos, cell) and not self.xray):
+                        continue
 
-                self.visible_positions.append(cell)
-                local[ix_new] = state[ix]
+                    self.visible_positions.append(cell)
+                    local[ix_new] = state[ix]
         return local
