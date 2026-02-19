@@ -5,10 +5,6 @@ from stable_baselines3.common.callbacks import BaseCallback
 from experiments.icm.icm import ICMModel
 
 class ICMCuriosityWrapper(gym.Wrapper):
-    """
-    Wraps any gym.Env and adds an intrinsic curiosity bonus to the reward.
-    The ICM module is trained online on the same transitions that the agent sees.
-    """
     def __init__(
         self,
         device: device,
@@ -30,7 +26,6 @@ class ICMCuriosityWrapper(gym.Wrapper):
 
     def step(self, action):
         state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
-
         intrinsic_reward = self.icm.calc_intrinsic_reward(self.prev_state, state, action)
         reward = extrinsic_reward + intrinsic_reward # type: ignore
 

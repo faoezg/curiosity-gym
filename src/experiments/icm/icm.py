@@ -37,9 +37,9 @@ class ICMModel(nn.Module):
                  self.beta = beta
                  self.eta = eta
 
-                 self.encoder_model = self.create_encoder_model(state_dim, hidden_dim, latent_rep_dim)
-                 self.forward_model = self.create_forward_model(latent_rep_dim, action_dim, hidden_dim)
-                 self.invers_model  = self.create_invers_model(latent_rep_dim, action_dim, hidden_dim)
+                 self.encoder_model = self._create_encoder_model(state_dim, hidden_dim, latent_rep_dim)
+                 self.forward_model = self._create_forward_model(latent_rep_dim, action_dim, hidden_dim)
+                 self.invers_model  = self._create_invers_model(latent_rep_dim, action_dim, hidden_dim)
     
     def forward(
                 self,
@@ -108,7 +108,7 @@ class ICMModel(nn.Module):
         forward_loss = self.calc_forward_loss(forward_pred, phi_next)
         return inv_loss, forward_loss
     
-    def create_encoder_model(self, state_dim, hidden_dim, latent_rep_dim) -> nn.Sequential:
+    def _create_encoder_model(self, state_dim, hidden_dim, latent_rep_dim) -> nn.Sequential:
         return nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
@@ -119,7 +119,7 @@ class ICMModel(nn.Module):
             nn.Linear(hidden_dim, latent_rep_dim)
         )
 
-    def create_forward_model(self, latent_rep_dim, action_dim, hidden_dim) -> nn.Sequential:
+    def _create_forward_model(self, latent_rep_dim, action_dim, hidden_dim) -> nn.Sequential:
         """(phi(s), a) -> phi_hat(s')"""
         return nn.Sequential(
             nn.Linear(latent_rep_dim + action_dim, hidden_dim),
@@ -131,7 +131,7 @@ class ICMModel(nn.Module):
             nn.Linear(hidden_dim, latent_rep_dim)
         )
 
-    def create_invers_model(self, latent_rep_dim, action_dim, hidden_dim) -> nn.Sequential:
+    def _create_invers_model(self, latent_rep_dim, action_dim, hidden_dim) -> nn.Sequential:
         """(phi(s), phi(s')) -> action_hat"""
         return nn.Sequential(
             nn.Linear(2 * latent_rep_dim, hidden_dim),

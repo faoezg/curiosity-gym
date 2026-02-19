@@ -7,30 +7,24 @@ from experiments.experiment_setup.harness import ExperimentHarness
 from experiments.experiment_setup.experiment_model import ExperimentModel
 from experiments.experiment_setup.experiment_evaluator import ExperimentEvaluator
 
-from experiments.icm.icm import ICMModel
-from experiments.icm.icm_reward_wrapper import ICMCuriosityWrapper
+from experiments.byol_explore.byol_explore import ByolExploreModel
+from experiments.byol_explore.byol_wrapper import ByolExploreWrapper
 
 import torch
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-ICM_LR = 1e-3
-TRAINING_STEPS = 100_000
-EVAL_EPISODES = 1
+TRAINING_STEPS = 50_000
+EVAL_EPISODES = 5
 
-def _setup_icm_for_env(env: GridEngine) -> ICMModel:
-    # TODO FIX TYPE IGNORE
+def _setup_byold_explore_model_for_env(env: GridEngine) -> ByolExploreModel:
     observation_space_shape = env.observation_space.shape
-    flattened_observation_space = observation_space_shape[0] * observation_space_shape[1]
-    icm = ICMModel(
-        device = DEVICE,
-        state_dim=flattened_observation_space, # type: ignore
-        action_dim=env.action_space.n, # type: ignore
-        latent_rep_dim=32,
-        hidden_dim=64,
-        beta = .2,
-        eta = 0.03 
-    ).to(DEVICE)
-    return icm
+    flattened_observation_space = observation_space_shape[0] * observation_space_shape[1] # type: ignore
+    return ByolExploreModel(state_dim=flattened_observation_space, # type: ignore
+                            action_dim=env.action_space.n, # type: ignore
+                            hidden_dim=256,
+                            latent_rep_dim=128,
+                            time_horizon=5,
+                            device=DEVICE)
 
 def _setup_base_envs() -> list[GridEngine]:
     envs = []
@@ -38,25 +32,25 @@ def _setup_base_envs() -> list[GridEngine]:
     # ValueError: Error: Unexpected observation shape (161, 3) for Box environment, 
     # please use (165, 3) or (n_env, 165, 3) for the observation shape
     pov = "local_2"
-    render_mode = None
-    #env_sparse = SparseEnv(agentPOV=pov, render_mode=render_mode)
-    env_distractive = DistractiveEnv(agentPOV=pov,render_mode=render_mode)
+    render_mode = "human"
+    env_sparse = SparseEnv(agentPOV=pov, render_mode=render_mode)
+    # env_distractive = DistractiveEnv(agentPOV=pov,render_mode=render_mode)
     #env_multitask1 = MultitaskEnv(agentPOV=pov, task=1, render_mode=render_mode)
     #env_multitask2 = MultitaskEnv(agentPOV=pov, task=2, render_mode=render_mode)
 
-    # envs.append(env_sparse)
-    envs.append(env_distractive)
+    envs.append(env_sparse)
+    # envs.append(env_distractive)
     #envs.append(env_multitask1)
     #envs.append(env_multitask2)
     return envs
 
-def _setup_wrapped_envs() -> list[tuple[ICMCuriosityWrapper, str]]:
+def _setup_wrapped_envs() -> list[tuple[ByolExploreWrapper, str]]:
     wrapped_envs = []
 
     base_envs = _setup_base_envs()
     for env in base_envs:
-        icm = _setup_icm_for_env(env)
-        wrapped_envs.append((ICMCuriosityWrapper(DEVICE, env, icm, ICM_LR), env.name))
+        count_model = _setup_byold_explore_model_for_env(env)
+        wrapped_envs.append((ByolExploreWrapper(env, count_model, DEVICE), env.name))
     return wrapped_envs
 
 def _setup_vec_envs() -> list[tuple[VecNormalize, str]]:
