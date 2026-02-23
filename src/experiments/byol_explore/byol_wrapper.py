@@ -12,32 +12,29 @@ class ByolExploreWrapper(gym.Wrapper):
         env: GridEngine,
         byol_explore_model: ByolExploreModel,
         device: device,
-        lambda_byol: float = 5.0,          # λ_byol in the paper
+        lambda_byol: float = 5.0, # λ_byol in the paper
         reward_norm_decay: float = 0.99,
     ):
         super().__init__(env)
         self.device = device 
         self.model = byol_explore_model
-        self.opt = torch.optim.Adam(self.model.parameters(), lr=1e-4)
+        self.opt = torch.optim.Adam(self.model.parameters(), lr=5e-4, weight_decay=1e-5)
 
         self.norm = RewardNormaliser(decay=reward_norm_decay)
 
         self.lambda_byol = lambda_byol
-        self.buffer = deque(maxlen=2)
+        self.buffer = deque(maxlen=byol_explore_model.time_horizon + 1)
         self.prev_action = None
 
     def reset(self, **kwargs):
         state, info = self.env.reset(**kwargs)
-        self.buffer.clear()
-        self.prev_action = None
-        self.buffer.append((state, None))
         return state, info
 
     def step(self, action):
         state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
         self.buffer.append((state, action))
 
-        if len(self.buffer) == 2:
+        if len(self.buffer) == self.model.time_horizon + 1:
             state_buffer, action_buffer = self._create_trajectory()
 
             intrinsic_reward, byol_loss = self._calc_intrinsic_reward_and_loss(state_buffer, action_buffer)
@@ -52,25 +49,26 @@ class ByolExploreWrapper(gym.Wrapper):
         info["intrinsic_reward"] = intrinsic_reward
         info["total_reward"] = reward 
 
+        print(info)
+
         return state, reward, terminated, truncated, info 
 
     def _create_trajectory(self):
-        t_0 = self.buffer.popleft()
-        t_1 = self.buffer.pop()
-        state_buffer = torch.stack(
-            [torch.from_numpy(t_0[0]),
-             torch.from_numpy(t_1[0])],
-            dim=0,
-        ).unsqueeze(0) # (B=1, T=2, N, 3)
-        state_buffer.to(torch.double)
-        old_action = 0
-        if t_0[1] is not None:
-            old_action = t_0[1]
+        state_tensors = []
+        actions = []
+        for state, action in self.buffer:
+            state_tensors.append(torch.from_numpy(state))
+            actions.append(action)
+
+        state_buffer = torch.stack(state_tensors,dim=0,).unsqueeze(0) # (B=1, T=2, N, 3)
+        state_buffer = state_buffer.to(torch.float32).to(self.device)
+
         action_buffer = torch.tensor(
-            [old_action, t_1[1]],
+            actions,
             dtype=torch.long,
             device=self.device,
-        ).unsqueeze(0).to(self.device) # (B=1, T=2)
+        ).unsqueeze(0) # (B=1, T=2)
+
         return state_buffer, action_buffer
 
     def _calc_intrinsic_reward_and_loss(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor):
@@ -83,5 +81,6 @@ class ByolExploreWrapper(gym.Wrapper):
     def _train_byol_explore_model(self, byol_loss: torch.Tensor):
         self.opt.zero_grad()
         (byol_loss * self.lambda_byol).backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
         self.opt.step()
         self.model.update_target_model()

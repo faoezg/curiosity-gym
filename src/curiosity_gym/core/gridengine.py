@@ -288,13 +288,13 @@ class GridEngine(gym.Env, ABC):
             Current state of the environment.
         """
         state = np.zeros(
-            [self.env_settings.width * self.env_settings.height, 3], dtype=int
+            [self.env_settings.width * self.env_settings.height, 3], dtype=float
         )
         for ob in self.objects.get_all():
             x, y = ob.position
             assert x + y * self.env_settings.width < len(
                 state
-            ), f"""Position [{x},{y}] of object with type {self.get_object_ids()[ob.id]}
+            ), f"""Position [{x},{y}] of object with type {self.get_object_ids()[ob.identifier]}
             is invalid for grid with size ({self.env_settings.width}, {self.env_settings.height})"""
             state[x + y * self.env_settings.width] = ob.get_identity()
         return state
@@ -457,6 +457,7 @@ class GridEngine(gym.Env, ABC):
 
     def _render_frame(self) -> np.ndarray | None:
         # Define canvas for new Frame
+        pygame.init()
         window_size = (
             self.render_settings.window_width,
             self.render_settings.window_height,

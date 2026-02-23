@@ -23,28 +23,27 @@ class ByolExploreModel(nn.Module):
         self.latent_rep_dim = latent_rep_dim
 
         self.encoder_model = self._create_encoder_model(state_dim, hidden_dim, latent_rep_dim)
+        self.projection_model = self._create_projection_model(latent_rep_dim)
         self._init_recurrent_model(action_dim, latent_rep_dim, hidden_dim)
-        self.predictor_model = self._predictor_model(hidden_dim, latent_rep_dim)
+        self.predictor_model = self._create_predictor_model(hidden_dim, latent_rep_dim)
         self._init_target_model(alpha)
     
     def forward(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor):
         B, T, N, C = state_buffer.shape
         state_encoding = self.encoder_model(state_buffer.view(B * T, N * C)).view(B, T, self.latent_rep_dim)
+        state_projection = self.projection_model(state_encoding)
 
-        h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_encoding)
+        h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_projection)
         byol_loss, intrinsic_rewards = self._calc_loss_and_intrinsic_rewards(B, T, h_closed_hist, action_buffer, state_buffer)
 
         return byol_loss, intrinsic_rewards
 
     def _calc_closed_loop_history_states(self, batch_dim: int, end_time: int, action_buffer: torch.Tensor, state_encoding: torch.Tensor) -> torch.Tensor:
         h_hist = []
-        h_closed = torch.zeros(batch_dim, self.hidden_dim, device=self.DEVICE, dtype=torch.double)
+        h_closed = torch.zeros(batch_dim, self.hidden_dim, device=self.DEVICE, dtype=torch.float32)
         for t in range(end_time):
-            if (t > 0):
-                previous_action = self.action_embedding_model(action_buffer[:, t])
-            else:
-                previous_action = torch.zeros(batch_dim, self.ACTION_EMBEDDING_DIM, device=self.DEVICE, dtype=torch.double)
-            input = torch.cat([state_encoding[:,t], previous_action], dim=-1) # (B, latent_rep_dim + ACTION_EMBEDDING_DIM)
+            previous_action = self.action_embedding_model(action_buffer[:, t]).to(self.DEVICE)
+            input = torch.cat([state_encoding[:,t], previous_action], dim=-1).to(self.DEVICE) # (B, latent_rep_dim + ACTION_EMBEDDING_DIM)
             h_closed = self.close_gru(input, h_closed)
             h_hist.append(h_closed)
         return torch.stack(h_hist, dim=1) # (B, T, hidden_dim)
@@ -54,10 +53,10 @@ class ByolExploreModel(nn.Module):
                                          end_time: int,
                                          h_hist: torch.Tensor,
                                          action_buffer: torch.Tensor,
-                                         state_buffer: torch.Tensor) -> tuple[float, torch.Tensor]:
+                                         state_buffer: torch.Tensor) -> tuple[torch.Tensor | float, torch.Tensor]:
         cos_loss = 0
         count = 0
-        intrinsic_rewards = torch.zeros(batch_dim, end_time, device=self.DEVICE, dtype=torch.double)
+        intrinsic_rewards = torch.zeros(batch_dim, end_time, device=self.DEVICE, dtype=torch.float32)
 
         for t in range(end_time):
             h_open = h_hist[:, t]
@@ -70,10 +69,11 @@ class ByolExploreModel(nn.Module):
                 pred = self.predictor_model(h_open)
 
                 with torch.no_grad():
-                    target = self.target_encoder_model(state_buffer[:, t + k].flatten())
+                    target_encoded = self.target_encoder_model(state_buffer[:, t + k].flatten())
+                    target_projection = self.target_projection_model(target_encoded)
                 
                 pred_normalised = F.normalize(pred, dim=-1)
-                target_normalised = F.normalize(target, dim=-1)
+                target_normalised = F.normalize(target_projection, dim=-1)
                 timestep_loss = 2 - 2 * (pred_normalised * target_normalised).sum(dim=-1) # cos-similarity is the dot-product of two unit vectors
                 cos_loss += timestep_loss.mean() # take the mean as batch size is not fixed
                 count += 1
@@ -85,8 +85,12 @@ class ByolExploreModel(nn.Module):
     
     @torch.no_grad()
     def update_target_model(self):
-        for online_parameters, target_parameters in zip(self.encoder_model.parameters(), self.target_encoder_model.parameters()):
-            target_parameters.data.mul_(self.alpha).add(online_parameters.data * (1.0 - self.alpha)) # EMA for Byol
+        for encoder_parameters, target_parameters in zip(self.encoder_model.parameters(), self.target_encoder_model.parameters()):
+            target_parameters.data.mul_(self.alpha).add(encoder_parameters.data * (1.0 - self.alpha)) # EMA for Byol
+
+        for projection_parameters, target_parameters in zip(self.projection_model.parameters(), self.target_projection_model.parameters()):
+            target_parameters.data.mul_(self.alpha).add(projection_parameters.data * (1.0 - self.alpha))
+ 
  
     # f in the paper, no conv needed as we have a very simply state to begin with
     def _create_encoder_model(self, state_dim: int, hidden_dim: int, latent_rep_dim: int):
@@ -95,28 +99,46 @@ class ByolExploreModel(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
             nn.Linear(hidden_dim, latent_rep_dim)
-        ).to(torch.double)
+        ).to(torch.float32).to(self.DEVICE)
     
     def _init_target_model(self, alpha: float):
         self.target_encoder_model = copy.deepcopy(self.encoder_model)
+        self.target_projection_model = copy.deepcopy(self.projection_model)
         for parameter in self.target_encoder_model.parameters():
             parameter.requires_grad = False
+        for parameter in self.target_projection_model.parameters():
+            parameter.requires_grad = False
+
         self.target_encoder_model.eval()
+        self.target_projection_model.eval()
         self.alpha = alpha
 
     # h in the paper
     def _init_recurrent_model(self, action_dim: int, latent_rep_dim: int, hidden_dim: int):
-        self.action_embedding_model = nn.Embedding(action_dim, self.ACTION_EMBEDDING_DIM, dtype=torch.double)
-        self.close_gru = nn.GRUCell(latent_rep_dim + self.ACTION_EMBEDDING_DIM, hidden_dim, dtype=torch.double)
-        self.open_gru  = nn.GRUCell(self.ACTION_EMBEDDING_DIM, hidden_dim, dtype=torch.double)
+        self.action_embedding_model = nn.Embedding(action_dim, self.ACTION_EMBEDDING_DIM, dtype=torch.float32, device=self.DEVICE)
+        self.close_gru = nn.GRUCell(latent_rep_dim + self.ACTION_EMBEDDING_DIM, hidden_dim, dtype=torch.float32, device=self.DEVICE)
+        self.open_gru  = nn.GRUCell(self.ACTION_EMBEDDING_DIM, hidden_dim, dtype=torch.float32, device=self.DEVICE)
 
     # g in the paper
-    def _predictor_model(self, hidden_dim: int, latent_rep_dim: int):
+    def _create_predictor_model(self, hidden_dim: int, latent_rep_dim: int):
         return nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, latent_rep_dim)
-        ).to(torch.double)
+        ).to(torch.float32)
+
+    # not in the byol-explore but the byol paper to help with model collapse on finding trivial solution for encoding
+    def _create_projection_model(self, latent_rep_dim: int):
+        return nn.Sequential(
+            nn.Linear(latent_rep_dim, latent_rep_dim),
+            nn.LayerNorm(latent_rep_dim),
+            nn.ReLU(),
+            nn.Linear(latent_rep_dim, latent_rep_dim),
+        ).to(torch.float32)

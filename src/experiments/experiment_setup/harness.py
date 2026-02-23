@@ -25,6 +25,7 @@ class ExperimentHarness(ABC):
         super().__init__()
         self._environments: list[GridEngine] = environments
         self._simulation_reports: dict[str, dict[str, list[SimulationReport]]] = {} # this struct arises to allow both evaluation based on env or model
+        self._images = []
         self._init_simulation_reports()
 
     def run_model_n_episodes_per_environment(self, experiment_model: ExperimentModel, episode_count: int) -> None:
@@ -53,16 +54,22 @@ class ExperimentHarness(ABC):
 
     def _simulate_next_step(self, model: BaseAlgorithm, env: GridEngine) -> None:
         self._init_env(env)
+        self._images = []
+        if (env.render_mode == "rgb_array"):
+            inital_image = env.render()
+            self._images.append(inital_image)
         while not (self._current_environment_goal_state_reached or self._current_environment_truncated):
             action = model.predict(observation=self._current_environment_observation)
             # TODO allow ExperimentModel to implement the model.predict() methode which returns an Action of the CuriosityGym
-            self._current_environment_observation, reward, self._current_environment_goal_state_reached, self._current_environment_truncated, _ = env.step(action[0])
+            self._current_environment_observation, reward, self._current_environment_goal_state_reached, self._current_environment_truncated, _ = env.step(action[0]) # type: ignore
             self._current_environment_steps_taken += 1
             self._total_current_environment_reward += reward
+            if (env.render_mode == "rgb_array"):
+                self._images.append(env.render())
     
     def _store_new_simulation_report(self, environment: GridEngine, model_name: str) -> None:
         deep_env_copy = copy.deepcopy(environment)
-        simulation_report = SimulationReport(model_name=model_name, environment=deep_env_copy)
+        simulation_report = SimulationReport(model_name=model_name, environment=deep_env_copy, images=self._images)
         simulation_report.total_reward = self._total_current_environment_reward
         env_model_dict = self._simulation_reports[environment.name]
         if(model_name not in env_model_dict.keys()):

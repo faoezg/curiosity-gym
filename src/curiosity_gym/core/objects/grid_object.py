@@ -14,6 +14,8 @@ import pygame
 
 from curiosity_gym.utils.enums import Action
 
+import random
+
 class GridObject(ABC):
     """Abstract class representing elements that can be placed in a grid environment. \n
     It contains the attributes position, color, and state, which define the characteristics
@@ -53,6 +55,9 @@ class GridObject(ABC):
         self.start_state = state
         self.state = state
 
+        #if (self.identifier != None):
+        #     self.identifier += random.random()
+
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         cls.identifier = GridObject._next_id
@@ -81,7 +86,7 @@ class GridObject(ABC):
         tuple[int | None, int, int]
             A tuple consisting of :attr:`~identifier`, :attr:`~color` and :attr:`~state`.
         """
-        return (self.__class__.identifier, self.color, self.state)
+        return (self.identifier, self.color, self.state)
 
     def interact(self, agent: Self) -> None:
         """Interact with agent. \n

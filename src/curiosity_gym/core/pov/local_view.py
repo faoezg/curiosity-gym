@@ -44,16 +44,18 @@ class LocalView(AgentPOV):
         pos = agent.position.tolist()
         local = np.full(((self.radius * 2 + 1) ** 2, 3), [0, 0, 0], dtype=float)
         for x in range(-self.radius, self.radius + 1):
-            for y in range(-self.radius, self.radius + 1):
-                visible_y_coor = pos[1] + y
-                if (visible_y_coor < self.height):
-                    ix = (pos[0] + x) + self.width * (visible_y_coor)
-                    ix_new = self.radius + x + (self.radius * 2 + 1) * (self.radius + y)
-                    cell = (pos[0] + x, visible_y_coor)
+            visible_x_coor = pos[0] + x
+            if (visible_x_coor < self.width):
+                for y in range(-self.radius, self.radius + 1):
+                    visible_y_coor = pos[1] + y
+                    if (visible_y_coor < self.height):
+                        ix = visible_x_coor + self.width * (visible_y_coor)
+                        ix_new = self.radius + x + (self.radius * 2 + 1) * (self.radius + y)
+                        cell = (visible_x_coor, visible_y_coor)
 
-                    if ix < 0 or (not self.is_visible(state, pos, cell) and not self.xray):
-                        continue
+                        if ix < 0 or (not self.is_visible(state, pos, cell) and not self.xray):
+                            continue
 
-                    self.visible_positions.append(cell)
-                    local[ix_new] = state[ix]
+                        self.visible_positions.append(cell)
+                        local[ix_new] = state[ix]
         return local

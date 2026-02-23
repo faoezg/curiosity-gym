@@ -12,9 +12,10 @@ from experiments.icm.icm_reward_wrapper import ICMCuriosityWrapper
 
 import torch
 
+SB3_DEVICE = "cpu"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ICM_LR = 1e-3
-TRAINING_STEPS = 100_000
+TRAINING_STEPS = 50_000
 EVAL_EPISODES = 1
 
 def _setup_icm_for_env(env: GridEngine) -> ICMModel:
@@ -38,7 +39,7 @@ def _setup_base_envs() -> list[GridEngine]:
     # ValueError: Error: Unexpected observation shape (161, 3) for Box environment, 
     # please use (165, 3) or (n_env, 165, 3) for the observation shape
     pov = "local_2"
-    render_mode = None
+    render_mode = "rgb_array" 
     #env_sparse = SparseEnv(agentPOV=pov, render_mode=render_mode)
     env_distractive = DistractiveEnv(agentPOV=pov,render_mode=render_mode)
     #env_multitask1 = MultitaskEnv(agentPOV=pov, task=1, render_mode=render_mode)
@@ -74,7 +75,7 @@ def _setup_sb3_ppo_models() -> dict[str, PPO]:
 
     model_dict = {}
     for vec_env, env_name in vec_envs:
-        model_dict[env_name] = PPO("MlpPolicy", vec_env, verbose=1, batch_size=16, normalize_advantage=False, device=DEVICE)
+        model_dict[env_name] = PPO("MlpPolicy", vec_env, verbose=1, batch_size=16, normalize_advantage=False, device=SB3_DEVICE)
     return model_dict
 
 def _train_ipo_models_with_icm(models: dict[str, PPO], timesteps: int):
@@ -99,5 +100,6 @@ def run_experiment():
     evaluator.print_summary()
     for env in base_envs:
         evaluator.save_environment_heatmaps(env.name)
+        evaluator.save_environment_gif(env.name)
 
 run_experiment()

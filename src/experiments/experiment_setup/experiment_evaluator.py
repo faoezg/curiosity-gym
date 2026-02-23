@@ -1,4 +1,6 @@
 from abc import ABC
+import imageio
+import numpy as np
 
 from experiments.experiment_setup.harness import ExperimentHarness
 from experiments.experiment_setup.simulation_report import SimulationReport
@@ -45,14 +47,25 @@ class ExperimentEvaluator(ABC):
     def save_environment_heatmaps(self, environment_name: str) -> None:
         simulation_reports = self._experiment_harness.simulation_reports
         for model_name, reports in simulation_reports[environment_name].items():
-            for simulation_report in reports:
-                file_path = f"{environment_name}_{model_name}.png"
+            for idx, simulation_report in enumerate(reports):
+                file_path = f"{environment_name}_{model_name}_Episode{idx}.png"
                 figure = simulation_report.environment.heatmap()
                 if (figure is not None):
                     figure.savefig(file_path)
+                    figure.clear()
                 else:
                     # TODO make proper error?
                     print("Exporting Heatmaps failed, as no figure was able to be created")
+
+    def save_environment_gif(self, environment_name: str) -> None:
+        simulation_reports = self._experiment_harness.simulation_reports
+        for model_name, reports in simulation_reports[environment_name].items():
+            for idx, simulation_report in enumerate(reports):
+                images = simulation_report.images
+                if (len(images) == 0):
+                    print("Exporting Gifs failed, as no images were found")
+                gif_name = f"{environment_name}_{model_name}_Episode{idx}.gif"
+                imageio.mimsave(gif_name, [np.array(img) for i, img in enumerate(simulation_report.images) if i%2 == 0], fps=7)
 
     def best_model_in_environment(self, environment_name: str) -> str:
         """Getter for the best model of a given environment"""

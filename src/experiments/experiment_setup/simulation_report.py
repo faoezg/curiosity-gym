@@ -1,4 +1,5 @@
 from abc import ABC
+import numpy as np
 
 from curiosity_gym.core.gridengine import GridEngine
 
@@ -18,13 +19,15 @@ class SimulationReport(ABC):
                  model_name: str,
                  environment: GridEngine,
                  environment_steps_taken: int = 0,
-                 total_reward: int | float = 0) -> None:
+                 total_reward: int | float = 0,
+                 images: list[np.ndarray] = []) -> None:
         super().__init__()
         self._id = uuid.uuid4()
         self._model_name = model_name
         self._environment = environment
         self._environment_steps_taken = environment_steps_taken
         self._total_reward = total_reward
+        self._images = images
     
     @property
     def model_name(self) -> str:
@@ -55,6 +58,11 @@ class SimulationReport(ABC):
     def total_reward(self, total_reward: int | float):
         """Setter of the total reward recived during simulation"""
         self._total_reward = total_reward
+
+    @property
+    def images(self) -> list[np.ndarray]:
+        """Getter of the images renderd during evaluation"""
+        return self._images
     
     def __str__(self) -> str:
         return f"In environment {self.environment_name} model {self.model_name} achieved a reward of {self.total_reward} in {self.environment_steps_taken} steps"

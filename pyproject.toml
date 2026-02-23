@@ -20,6 +20,7 @@ dependencies = [
     "fonttools==4.54.1",
     "fsspec==2024.10.0",
     "gymnasium==0.29.1",
+    "imageio>=2.37.2",
     "ipykernel==6.29.5",
     "ipython==8.29.0",
     "jedi==0.19.1",
@@ -49,6 +50,7 @@ dependencies = [
     "pytz==2024.2",
     "pywin32==308",
     "pyzmq==26.2.0",
+    "rich>=14.3.3",
     "seaborn==0.13.2",
     "setuptools==75.2.0",
     "six==1.16.0",
@@ -56,6 +58,7 @@ dependencies = [
     "stack-data==0.6.3",
     "torch>=2.8.0",
     "tornado>=6.4.1",
+    "tqdm>=4.67.3",
     "traitlets==5.14.3",
     "typing-extensions==4.12.2",
     "tzdata==2024.2",
@@ -76,3 +79,16 @@ dev = [
 
 [tool.setuptools.packages.find]
 wherer = ["src"]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+  { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]

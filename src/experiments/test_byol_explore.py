@@ -12,9 +12,11 @@ from experiments.byol_explore.byol_wrapper import ByolExploreWrapper
 
 import torch
 
+SB3_DEVICE = "cpu"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 TRAINING_STEPS = 50_000
 EVAL_EPISODES = 5
+print("Running own models on: ", DEVICE)
 
 def _setup_byold_explore_model_for_env(env: GridEngine) -> ByolExploreModel:
     observation_space_shape = env.observation_space.shape
@@ -22,17 +24,18 @@ def _setup_byold_explore_model_for_env(env: GridEngine) -> ByolExploreModel:
     return ByolExploreModel(state_dim=flattened_observation_space, # type: ignore
                             action_dim=env.action_space.n, # type: ignore
                             hidden_dim=256,
-                            latent_rep_dim=128,
+                            latent_rep_dim=32,
                             time_horizon=5,
-                            device=DEVICE)
+                            device=DEVICE,
+                            alpha=0.99).to(DEVICE)
 
 def _setup_base_envs() -> list[GridEngine]:
     envs = []
     # TODO global bricks evaluation suit
     # ValueError: Error: Unexpected observation shape (161, 3) for Box environment, 
     # please use (165, 3) or (n_env, 165, 3) for the observation shape
-    pov = "local_2"
-    render_mode = "human"
+    pov = "global"# "local_2"
+    render_mode = "rgb_array" 
     env_sparse = SparseEnv(agentPOV=pov, render_mode=render_mode)
     # env_distractive = DistractiveEnv(agentPOV=pov,render_mode=render_mode)
     #env_multitask1 = MultitaskEnv(agentPOV=pov, task=1, render_mode=render_mode)
@@ -50,7 +53,7 @@ def _setup_wrapped_envs() -> list[tuple[ByolExploreWrapper, str]]:
     base_envs = _setup_base_envs()
     for env in base_envs:
         count_model = _setup_byold_explore_model_for_env(env)
-        wrapped_envs.append((ByolExploreWrapper(env, count_model, DEVICE), env.name))
+        wrapped_envs.append((ByolExploreWrapper(env, count_model, DEVICE, reward_norm_decay=0.2), env.name))
     return wrapped_envs
 
 def _setup_vec_envs() -> list[tuple[VecNormalize, str]]:
@@ -68,7 +71,7 @@ def _setup_sb3_ppo_models() -> dict[str, PPO]:
 
     model_dict = {}
     for vec_env, env_name in vec_envs:
-        model_dict[env_name] = PPO("MlpPolicy", vec_env, verbose=1, batch_size=16, normalize_advantage=False, device=DEVICE)
+        model_dict[env_name] = PPO("MlpPolicy", vec_env, verbose=1, batch_size=16, normalize_advantage=False, device=SB3_DEVICE)
     return model_dict
 
 def _train_ipo_models_with_icm(models: dict[str, PPO], timesteps: int):
@@ -93,5 +96,6 @@ def run_experiment():
     evaluator.print_summary()
     for env in base_envs:
         evaluator.save_environment_heatmaps(env.name)
+        evaluator.save_environment_gif(env.name)
 
 run_experiment()

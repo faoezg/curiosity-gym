@@ -3,7 +3,7 @@ import numpy as np
 
 # following Z. Guo et. al. 2022, Appendix A.3
 class RewardNormaliser:
-    def __init__(self, decay: float = 0.99, eps: float = 1e-8):
+    def __init__(self, decay: float = 0.995, eps: float = 1e-6):
         self.decay = decay
         self.eps = eps
         self.mean = 0.0
@@ -21,8 +21,10 @@ class RewardNormaliser:
         self._ema_update(batch_mean, batch_squared_mean)
 
         mu, mu_squared = self._adjust_ema()
+        
 
         std = np.sqrt(max(mu_squared - mu ** 2, 0.0) + self.eps)
+
         return raw_tensor / std
 
     def _ema_update(self, batch_mean: float, batch_squared_mean: float):
