@@ -18,7 +18,7 @@ class ByolExploreWrapper(gym.Wrapper):
         super().__init__(env)
         self.device = device 
         self.model = byol_explore_model
-        self.opt = torch.optim.Adam(self.model.parameters(), lr=5e-4, weight_decay=1e-5)
+        self.opt = torch.optim.Adam(self.model.parameters())
 
         self.norm = RewardNormaliser(decay=reward_norm_decay)
 
@@ -49,7 +49,7 @@ class ByolExploreWrapper(gym.Wrapper):
         info["intrinsic_reward"] = intrinsic_reward
         info["total_reward"] = reward 
 
-        print(info)
+        # print(info)
 
         return state, reward, terminated, truncated, info 
 

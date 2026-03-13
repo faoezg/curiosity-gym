@@ -20,32 +20,31 @@ class UnifiedCountModel():
         self.total_visited_states = 0
     
     def update_observation(self, state: np.ndarray) -> None:
-        for cell in state:
-            self.visitation_dict[tuple(cell)] += 1
-            self.total_visited_states += 1
+        state = tuple(map(tuple, state))
+        self.visitation_dict[state] += 1
+        self.total_visited_states += 1
     
     def calc_visitation_prob(self, state: np.ndarray) -> float:
+        state = tuple(map(tuple, state))
         log_prob = 0.0
-        for cell in state:
-            # calc in log-space for stability on large state-spaces
-            log_prob += np.log(self._calc_cell_visitation_prob(tuple(cell)))
+        log_prob += np.log(self._calc_cell_visitation_prob(state))
         return np.exp(log_prob)
 
     def calc_visitation_prob_after_observation(self, state: np.ndarray) -> float:
+        state = tuple(map(tuple, state))
         log_prob = 0.0
-        for cell in state:
-            # calc in log-space for stability on large state-spaces
-            log_prob += np.log(self._calc_new_state_visitation_prob(tuple(cell)))
+        # calc in log-space for stability on large state-spaces
+        log_prob += np.log(self._calc_new_state_visitation_prob(state))
         return np.exp(log_prob)
 
-    def _calc_current_cell_visitation_prob(self, cell: tuple[float, float, float]) -> float:
-        return self._calc_cell_visitation_prob(cell)
+    def _calc_current_cell_visitation_prob(self, state: list[tuple[float, float, float]]) -> float:
+        return self._calc_cell_visitation_prob(state)
 
-    def _calc_new_state_visitation_prob(self, cell: tuple[float, float, float]) -> float:
-        return self._calc_cell_visitation_prob(cell, 1)
+    def _calc_new_state_visitation_prob(self, state: list[tuple[float, float, float]]) -> float:
+        return self._calc_cell_visitation_prob(state, 1)
     
     
-    def _calc_cell_visitation_prob(self, cell: tuple[float, float, float], observation_count: int = 0) -> float:
+    def _calc_cell_visitation_prob(self, state: list[tuple[float, float, float]], observation_count: int = 0) -> float:
         """
         Docstring for _calc_current_state_visitation_prob
         
@@ -56,7 +55,7 @@ class UnifiedCountModel():
         :return: rho(cell) - visitation probability of the cell
         :rtype: float
         """
-        pseudo_count = self.visitation_dict[cell] + observation_count + self.prior # + prior if state is unvisited
+        pseudo_count = self.visitation_dict[state] + observation_count + self.prior # + prior if state is unvisited
         total_visited_states = self.total_visited_states + observation_count + self.prior * self.possible_state_dim
 
         return pseudo_count / total_visited_states

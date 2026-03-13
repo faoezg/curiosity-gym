@@ -12,10 +12,10 @@ from experiments.count_based.unified_count_reward_wrapper import UnifiedCountWra
 
 import torch
 
+SB3_DEVICE = "cpu"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-ICM_LR = 1e-3
-TRAINING_STEPS = 300_000
-EVAL_EPISODES = 1
+TRAINING_STEPS = 100_000
+EVAL_EPISODES = 3
 
 def _setup_count_model_for_env(env: GridEngine) -> UnifiedCountModel:
     observation_space_shape = env.observation_space.shape
@@ -28,16 +28,16 @@ def _setup_base_envs() -> list[GridEngine]:
     # ValueError: Error: Unexpected observation shape (161, 3) for Box environment, 
     # please use (165, 3) or (n_env, 165, 3) for the observation shape
     pov = "local_2"
-    render_mode = None
+    render_mode = "rgb_array" 
     #env_sparse = SparseEnv(agentPOV=pov, render_mode=render_mode)
-    env_distractive = DistractiveEnv(agentPOV=pov,render_mode=render_mode)
+    #env_distractive = DistractiveEnv(agentPOV=pov,render_mode=render_mode, simple_actions=True)
     #env_multitask1 = MultitaskEnv(agentPOV=pov, task=1, render_mode=render_mode)
-    #env_multitask2 = MultitaskEnv(agentPOV=pov, task=2, render_mode=render_mode)
+    env_multitask2 = MultitaskEnv(agentPOV=pov, task=2, render_mode=render_mode, simple_actions=True)
 
     # envs.append(env_sparse)
-    envs.append(env_distractive)
+    #envs.append(env_distractive)
     #envs.append(env_multitask1)
-    #envs.append(env_multitask2)
+    envs.append(env_multitask2)
     return envs
 
 def _setup_wrapped_envs() -> list[tuple[UnifiedCountWrapper, str]]:
@@ -46,7 +46,7 @@ def _setup_wrapped_envs() -> list[tuple[UnifiedCountWrapper, str]]:
     base_envs = _setup_base_envs()
     for env in base_envs:
         count_model = _setup_count_model_for_env(env)
-        wrapped_envs.append((UnifiedCountWrapper(env, count_model), env.name))
+        wrapped_envs.append((UnifiedCountWrapper(env, count_model, clip_range=0, eps=0.5, beta=5), env.name))
     return wrapped_envs
 
 def _setup_vec_envs() -> list[tuple[VecNormalize, str]]:
@@ -64,7 +64,12 @@ def _setup_sb3_ppo_models() -> dict[str, PPO]:
 
     model_dict = {}
     for vec_env, env_name in vec_envs:
-        model_dict[env_name] = PPO("MlpPolicy", vec_env, verbose=1, batch_size=16, normalize_advantage=False, device=DEVICE)
+        model_dict[env_name] = PPO("MlpPolicy", vec_env,
+                                   verbose=0,
+                                   learning_rate=1e-3,
+                                   batch_size=16,
+                                   normalize_advantage=False,
+                                   device=SB3_DEVICE)
     return model_dict
 
 def _train_ipo_models_with_icm(models: dict[str, PPO], timesteps: int):
@@ -89,5 +94,6 @@ def run_experiment():
     evaluator.print_summary()
     for env in base_envs:
         evaluator.save_environment_heatmaps(env.name)
+        evaluator.save_environment_gif(env.name)
 
 run_experiment()

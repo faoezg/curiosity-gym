@@ -31,6 +31,7 @@ class EnvironmentSettings:
     width: int = 10
     height: int = 10
     reward_range: tuple[int, int] = (0, 1)
+    simple_actions: bool = False
 
 
 @dataclass

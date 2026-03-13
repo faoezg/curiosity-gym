@@ -11,6 +11,13 @@ class Action(Enum):
     TURN_LEFT = 2
     INTERACT = 3
 
+class SimplerAction(Enum):
+    """Available actions in a curiosity-gym grid environment."""
+
+    FORWARD = 0
+    MOVE_RIGHT = 1
+    MOVE_LEFT = 2
+    INTERACT = 3
 
 class Rotation(Enum):
     """Possible rotations in a curiosity-gym grid environment."""

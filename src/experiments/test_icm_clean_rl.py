@@ -1,5 +1,4 @@
-from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from experiments.clean_rl.ppo import Args, run_clean_rl_ppo_model
 from curiosity_gym import DistractiveEnv, SparseEnv, MultitaskEnv
 from curiosity_gym.core.gridengine import GridEngine 
 
@@ -11,6 +10,7 @@ from experiments.byol_explore.byol_explore import ByolExploreModel
 from experiments.byol_explore.byol_wrapper import ByolExploreWrapper
 
 import torch
+import gymnasium as gym
 
 SB3_DEVICE = "cpu"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -53,46 +53,45 @@ def _setup_wrapped_envs() -> list[tuple[ByolExploreWrapper, str]]:
         wrapped_envs.append((ByolExploreWrapper(env, count_model, DEVICE, reward_norm_decay=0.2), env.name))
     return wrapped_envs
 
-def _setup_vec_envs() -> list[tuple[VecNormalize, str]]:
-    wrapped_envs = _setup_wrapped_envs()
 
-    vec_envs = []
-    for wrapped_env, env_name in wrapped_envs:
-        dummy_env = DummyVecEnv([lambda: wrapped_env])
-        normalized_vec_env = VecNormalize(dummy_env, norm_obs=True, norm_reward=False)
-        vec_envs.append((normalized_vec_env, env_name))
-    return vec_envs
-
-def _setup_sb3_ppo_models() -> dict[str, PPO]:
-    vec_envs = _setup_vec_envs()
+def _setup_clean_rl_ppo_models() -> dict[str, Args]:
+    envs = _setup_base_envs()
 
     model_dict = {}
-    for vec_env, env_name in vec_envs:
-        model_dict[env_name] = PPO("MlpPolicy", vec_env, verbose=0, batch_size=16, normalize_advantage=False, device=SB3_DEVICE)
+    for env in envs:
+        args = Args(
+            env.name,
+            env_id="SparseEnv-ByolExplore",
+            num_envs=1,
+            num_steps=TRAINING_STEPS,
+            capture_video=True
+        )
+        model_dict[env.name] = args
     return model_dict
 
-def _train_ipo_models_with_icm(models: dict[str, PPO], timesteps: int):
+def _train_ppo_models_with_byol(models: dict[str, Args]):
     for model in models.values():
-        model.learn(total_timesteps=timesteps, progress_bar=True)
+        run_clean_rl_ppo_model(model)
+
 
 def run_experiment():
     base_envs = _setup_base_envs()
-    model_dict = _setup_sb3_ppo_models()
-    _train_ipo_models_with_icm(model_dict, TRAINING_STEPS)
+    model_dict = _setup_clean_rl_ppo_models()
+    _train_ppo_models_with_byol(model_dict)
 
-    harness = ExperimentHarness(base_envs)
-    experiment_models = []
-    for env_name, model in model_dict.items():
-        experiment_models.append(ExperimentModel(model, f"trained on {env_name}"))
-    
-    for experiment_model in experiment_models:
-        harness.run_model_n_episodes_per_environment(experiment_model, EVAL_EPISODES)
+   # harness = ExperimentHarness(base_envs)
+   # experiment_models = []
+   # for env_name, model in model_dict.items():
+   #     experiment_models.append(ExperimentModel(model, f"trained on {env_name}"))
+   # 
+   # for experiment_model in experiment_models:
+   #     harness.run_model_n_episodes_per_environment(experiment_model, EVAL_EPISODES)
 
-    evaluator = ExperimentEvaluator(harness)
-    evaluator.evaluate_entire_expermient()
-    evaluator.print_summary()
-    for env in base_envs:
-        evaluator.save_environment_heatmaps(env.name)
-        evaluator.save_environment_gif(env.name)
+   # evaluator = ExperimentEvaluator(harness)
+   # evaluator.evaluate_entire_expermient()
+   # evaluator.print_summary()
+   # for env in base_envs:
+   #     evaluator.save_environment_heatmaps(env.name)
+   #     evaluator.save_environment_gif(env.name)
 
 run_experiment()

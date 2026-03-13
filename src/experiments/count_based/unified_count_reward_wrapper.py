@@ -1,6 +1,6 @@
 import gymnasium as gym
 from experiments.count_based.unified_count import UnifiedCountModel
-from curiosity_gym.core.gridengine import Action
+from curiosity_gym.core.gridengine import Action, SimplerAction
 import numpy as np
 
 class UnifiedCountWrapper(gym.Wrapper):
@@ -16,10 +16,8 @@ class UnifiedCountWrapper(gym.Wrapper):
         self.eps = eps
         self.clip_range = clip_range
     
-    def step(self, action: Action):
+    def step(self, action: Action | SimplerAction):
         state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
-        if (action == 1 or action == 2):
-            return state, extrinsic_reward, terminated, truncated, info
 
         intrinsic_reward = self._calc_intrinsic_reward(state)
         self.count_model.update_observation(state)
@@ -28,6 +26,8 @@ class UnifiedCountWrapper(gym.Wrapper):
         info["extrinsic_reward"] = extrinsic_reward
         info["intrinsic_reward"] = intrinsic_reward
         info["total_reward"] = reward 
+
+        print(info)
 
         return state, reward, terminated, truncated, info
     

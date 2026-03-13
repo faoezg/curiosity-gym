@@ -2,7 +2,7 @@ from typing_extensions import override
 from curiosity_gym.core.objects.grid_object import GridObject
 
 import numpy as np
-from curiosity_gym.utils.enums import Action
+from curiosity_gym.utils.enums import Action, SimplerAction
 from curiosity_gym.utils.constants import IX_TO_COLOR, STATE_TO_ROTATION
 import pygame
 
@@ -29,7 +29,7 @@ class Agent(GridObject):
     @override
     def step(
         self,
-        action: Action,
+        action: Action | SimplerAction,
         front_object: GridObject | None = None,
         walkable: bool = False,
     ) -> float:
@@ -68,6 +68,19 @@ class Agent(GridObject):
 
         elif action == Action.INTERACT and front_object:
             front_object.interact(self)
+        
+        elif action == SimplerAction.MOVE_RIGHT and walkable:
+            self.state = (self.state - 1) % 4
+            self.position = self.position + STATE_TO_ROTATION[self.state] * np.array(
+                [1, -1]
+            )
+        elif action == SimplerAction.MOVE_LEFT and walkable:
+            self.state = (self.state + 1) % 4
+            self.position = self.position + STATE_TO_ROTATION[self.state] * np.array(
+                [1, -1]
+            )
+
+
 
         return 0
 

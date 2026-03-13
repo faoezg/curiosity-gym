@@ -51,6 +51,7 @@ class DistractiveEnv(GridEngine):
         agentPOV: AgentPOV | str = "global",
         render_mode: str | None = None,
         window_width: int = 1200,
+        simple_actions: bool = False
     ) -> None:
 
         env_settings = EnvironmentSettings(
@@ -59,6 +60,7 @@ class DistractiveEnv(GridEngine):
             width=23,
             height=7,
             reward_range=(0, 1),
+            simple_actions=simple_actions
         )
 
         render_settings = RenderSettings(

@@ -34,7 +34,7 @@ class LocalView(AgentPOV):
         action_space = spaces.Discrete(4)
         number_of_cells = (self.radius * 2 + 1) ** 2
         observation_space = spaces.Box(
-            shape=(number_of_cells, 3), high=10, low=0, dtype=np.int64
+            shape=(number_of_cells,), high=10, low=0, dtype=np.int64
         )
         super().__init__(action_space, observation_space, env_size)
 
@@ -45,17 +45,16 @@ class LocalView(AgentPOV):
         local = np.full(((self.radius * 2 + 1) ** 2, 3), [0, 0, 0], dtype=float)
         for x in range(-self.radius, self.radius + 1):
             visible_x_coor = pos[0] + x
-            if (visible_x_coor < self.width):
-                for y in range(-self.radius, self.radius + 1):
-                    visible_y_coor = pos[1] + y
-                    if (visible_y_coor < self.height):
-                        ix = visible_x_coor + self.width * (visible_y_coor)
-                        ix_new = self.radius + x + (self.radius * 2 + 1) * (self.radius + y)
-                        cell = (visible_x_coor, visible_y_coor)
+            for y in range(-self.radius, self.radius + 1):
+                visible_y_coor = pos[1] + y
+                if (visible_y_coor < self.height):
+                    ix = visible_x_coor + self.width * (visible_y_coor)
+                    ix_new = self.radius + x + (self.radius * 2 + 1) * (self.radius + y)
+                    cell = (visible_x_coor, visible_y_coor)
 
-                        if ix < 0 or (not self.is_visible(state, pos, cell) and not self.xray):
-                            continue
+                    if ix < 0 or (not self.is_visible(state, pos, cell) and not self.xray):
+                        continue
 
-                        self.visible_positions.append(cell)
-                        local[ix_new] = state[ix]
+                    self.visible_positions.append(cell)
+                    local[ix_new] = state[ix]
         return local

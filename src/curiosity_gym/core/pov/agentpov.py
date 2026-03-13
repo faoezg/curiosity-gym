@@ -17,7 +17,7 @@ import numpy as np
 from gymnasium import spaces
 
 from curiosity_gym.core.objects import Agent, Wall, Door
-from curiosity_gym.utils.enums import Action
+from curiosity_gym.utils.enums import Action, SimplerAction
 
 
 class AgentPOV(ABC):
@@ -68,7 +68,7 @@ class AgentPOV(ABC):
             Observation within the :attr:`~observation_space`.
         """
 
-    def transform_action(self, action: int | Action) -> Action:
+    def transform_action(self, action: int | Action | SimplerAction, simple_actions: bool) -> Action | SimplerAction:
         """Transform given action so that it is compatible with the grid environment. \n
         Can be used to define alternative action spaces and map them to the grid dynamics.
 
@@ -82,7 +82,8 @@ class AgentPOV(ABC):
         :type:`~curiosity_gym.utils.enums.Action`
             Action within :attr:`action_space` to perform.
         """
-        return Action(action)
+
+        return SimplerAction(action) if simple_actions else Action(action)
 
     def is_visible(
         self,

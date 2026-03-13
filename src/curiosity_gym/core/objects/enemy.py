@@ -2,7 +2,7 @@ from typing_extensions import override
 from curiosity_gym.core.objects.grid_object import GridObject
 
 import numpy as np
-from curiosity_gym.utils.enums import Action
+from curiosity_gym.utils.enums import Action, SimplerAction
 from curiosity_gym.utils.constants import IX_TO_COLOR, STATE_TO_ROTATION
 import pygame
 
@@ -44,7 +44,7 @@ class Enemy(GridObject):
     @override
     def step(
         self,
-        action: Action,
+        action: Action | SimplerAction,
         front_object: GridObject | None = None,
         walkable: bool = False,
     ) -> float:

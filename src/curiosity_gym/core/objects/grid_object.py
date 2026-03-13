@@ -12,7 +12,7 @@ from typing_extensions import Self
 import numpy as np
 import pygame
 
-from curiosity_gym.utils.enums import Action
+from curiosity_gym.utils.enums import Action, SimplerAction
 
 import random
 
@@ -109,7 +109,7 @@ class GridObject(ABC):
 
     def step(
         self,
-        action: Action,
+        action: Action | SimplerAction,
         front_object: Self | None = None,
         walkable: bool = False,
     ) -> float:
@@ -135,7 +135,7 @@ class GridObject(ABC):
 
     def simulate(
         self,
-        action: Action,
+        action: Action | SimplerAction,
         front_object: Self | None = None,
         walkable: bool = False,
     ) -> Self:

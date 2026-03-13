@@ -41,7 +41,7 @@ class ForwardView(AgentPOV):
         action_space = spaces.Discrete(4)
         number_of_cells = (pov_length + 1) * pov_width
         observation_space = spaces.Box(
-            shape=(number_of_cells, 3), high=10, low=0, dtype=np.int64
+            shape=(number_of_cells,), high=10, low=0, dtype=np.int64
         )
         super().__init__(action_space, observation_space, env_size)
 

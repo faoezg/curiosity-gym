@@ -19,7 +19,7 @@ import seaborn as sns
 
 from curiosity_gym.core.objects import GridObject, Wall
 from curiosity_gym.core.pov import AgentPOV, GlobalView, LocalView, ForwardView
-from curiosity_gym.utils.enums import Action
+from curiosity_gym.utils.enums import Action, SimplerAction
 from curiosity_gym.utils.dataclasses import (
     EnvironmentSettings,
     RenderSettings,
@@ -106,7 +106,7 @@ class GridEngine(gym.Env, ABC):
         """
 
     def step(
-        self, action: int | Action
+        self, action: int | Action | SimplerAction
     ) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         """Run one timestep of the environment’s dynamics using the agent actions.\n
         When the end of an episode is reached (terminated or truncated), it is necessary
@@ -141,7 +141,7 @@ class GridEngine(gym.Env, ABC):
         """
         self.step_count += 1
         self.pos_count[tuple(self.objects.agent.position)] += 1
-        obs = self._get_obs()
+        obs = self._get_simplified_obs(self._get_obs())
 
         reward = self._calc_reward(action)
 
@@ -160,15 +160,15 @@ class GridEngine(gym.Env, ABC):
             self._get_info(),
         )
 
-    def _calc_reward(self, action: int | Action):
+    def _calc_reward(self, action: int | Action | SimplerAction):
         external_reward = self._calc_obj_reward(action) + self._calc_task_reward()
         return external_reward
    
-    def _calc_obj_reward(self, action: int | Action):
+    def _calc_obj_reward(self, action: int | Action | SimplerAction):
         reward = 0
         for ob in self.objects.get_non_wall():
             reward += ob.step(
-                self.agent_pov.transform_action(action),
+                self.agent_pov.transform_action(action, self.env_settings.simple_actions),
                 self.find_object(self.objects.agent.get_front()),
                 self._check_walkable(self.objects.agent.get_front()),
             )
@@ -205,7 +205,7 @@ class GridEngine(gym.Env, ABC):
             ob.reset()
         self.step_count = 0
         self.pos_count[tuple(self.objects.agent.position)] += 1
-        return (self._get_obs(), self._get_info())
+        return (self._get_simplified_obs(self._get_obs()), self._get_info())
 
     def render(self) -> np.ndarray | None:
         """Compute the render frames as specified by 
@@ -288,7 +288,7 @@ class GridEngine(gym.Env, ABC):
             Current state of the environment.
         """
         state = np.zeros(
-            [self.env_settings.width * self.env_settings.height, 3], dtype=float
+            [self.env_settings.width * self.env_settings.height, 3], dtype=int
         )
         for ob in self.objects.get_all():
             x, y = ob.position
@@ -298,6 +298,17 @@ class GridEngine(gym.Env, ABC):
             is invalid for grid with size ({self.env_settings.width}, {self.env_settings.height})"""
             state[x + y * self.env_settings.width] = ob.get_identity()
         return state
+    
+    def _get_simplified_obs(self, raw_obs: np.ndarray) -> np.ndarray:
+        simplified_state = np.zeros(len(raw_obs), dtype=int)
+
+        # This works as long as (id, colour) from a primary key regarding objects
+        for idx, cell in enumerate(raw_obs):
+            simplified_state[idx] = cell[0] + cell[1] + cell[2]
+
+        return simplified_state
+
+
 
     def heatmap(self) -> Figure | None:
         """Display heatmap of position counts of the agent."""
@@ -342,7 +353,7 @@ class GridEngine(gym.Env, ABC):
         walls = [Wall(position) for position in positions]
         return np.array(walls)
 
-    def simulate(self, action: int | Action) -> np.ndarray:
+    def simulate(self, action: int | Action | SimplerAction) -> np.ndarray:
         """Simulate the state of the environment if a given action were taken.\n
         Does not change the actual state of the environment.
 
@@ -363,7 +374,7 @@ class GridEngine(gym.Env, ABC):
         state = np.zeros([self.env_settings.width * self.env_settings.height, 3])
         for ob in self.objects.get_all():
             ob_simulated = ob.simulate(
-                Action(action),
+                SimplerAction(action) if self.env_settings.simple_actions else Action(action),
                 self.find_object(self.objects.agent.get_front()),
                 self._check_walkable(self.objects.agent.get_front()),
             )

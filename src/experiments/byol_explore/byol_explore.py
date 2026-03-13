@@ -29,8 +29,8 @@ class ByolExploreModel(nn.Module):
         self._init_target_model(alpha)
     
     def forward(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor):
-        B, T, N, C = state_buffer.shape
-        state_encoding = self.encoder_model(state_buffer.view(B * T, N * C)).view(B, T, self.latent_rep_dim)
+        B, T, C = state_buffer.shape
+        state_encoding = self.encoder_model(state_buffer.view(B * T, C)).view(B, T, self.latent_rep_dim)
         state_projection = self.projection_model(state_encoding)
 
         h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_projection)
@@ -59,7 +59,7 @@ class ByolExploreModel(nn.Module):
         intrinsic_rewards = torch.zeros(batch_dim, end_time, device=self.DEVICE, dtype=torch.float32)
 
         for t in range(end_time):
-            h_open = h_hist[:, t]
+            h_open = h_hist[:, t] # b_t
             for k in range(1, self.time_horizon + 1):
                 if t + k >= end_time:
                     break
@@ -99,10 +99,6 @@ class ByolExploreModel(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
             nn.Linear(hidden_dim, latent_rep_dim)
         ).to(torch.float32).to(self.DEVICE)
     
@@ -127,8 +123,6 @@ class ByolExploreModel(nn.Module):
     # g in the paper
     def _create_predictor_model(self, hidden_dim: int, latent_rep_dim: int):
         return nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, latent_rep_dim)
