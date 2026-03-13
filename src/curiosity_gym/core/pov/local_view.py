@@ -27,14 +27,15 @@ class LocalView(AgentPOV):
 
     @override
     def __init__(
-        self, radius: int, env_size: tuple[int, int], xray: bool = False
+        self, radius: int, env_size: tuple[int, int], xray: bool = False, simple_observation_space: bool = True
     ) -> None:
         self.radius = radius
         self.xray = xray
         action_space = spaces.Discrete(4)
         number_of_cells = (self.radius * 2 + 1) ** 2
+        observation_space_shape = (number_of_cells,) if simple_observation_space else (number_of_cells,3)
         observation_space = spaces.Box(
-            shape=(number_of_cells,), high=10, low=0, dtype=np.int64
+            shape=observation_space_shape, high=10, low=0, dtype=np.int64
         )
         super().__init__(action_space, observation_space, env_size)
 

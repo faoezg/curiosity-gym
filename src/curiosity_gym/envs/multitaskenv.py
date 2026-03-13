@@ -65,7 +65,8 @@ class MultitaskEnv(GridEngine):
         random: bool = False,
         render_mode: str | None = None,
         window_width: int = 1200,
-        simple_actions: bool = False
+        simple_actions: bool = False,
+        simple_obs: bool = True
     ) -> None:
 
         assert task <= 2, f"Invalid task id: {task}."
@@ -78,7 +79,8 @@ class MultitaskEnv(GridEngine):
             width=19,
             height=7,
             reward_range=(0, 1),
-            simple_actions=simple_actions
+            simple_actions=simple_actions,
+            simple_obs=simple_obs
         )
 
         render_settings = RenderSettings(

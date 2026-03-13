@@ -52,7 +52,8 @@ class SparseEnv(GridEngine):
         agentPOV: AgentPOV | str = "global",
         render_mode: str | None = None,
         window_width: int = 800,
-        simple_actions: bool = False
+        simple_actions: bool = False,
+        simple_obs: bool = True
     ) -> None:
 
         env_settings = EnvironmentSettings(
@@ -61,7 +62,8 @@ class SparseEnv(GridEngine):
             width=15,
             height=11,
             reward_range=(0, 1),
-            simple_actions=simple_actions
+            simple_actions=simple_actions,
+            simple_obs=simple_obs
         )
 
         render_settings = RenderSettings(

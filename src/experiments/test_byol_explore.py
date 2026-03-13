@@ -33,7 +33,7 @@ def _setup_base_envs() -> list[GridEngine]:
     envs = []
     pov =  "local_2"
     render_mode = "rgb_array" 
-    env_sparse = SparseEnv(agentPOV=pov, render_mode=render_mode, simple_actions=True)
+    env_sparse = SparseEnv(agentPOV=pov, render_mode=render_mode, simple_actions=True, simple_obs=False)
     # env_distractive = DistractiveEnv(agentPOV=pov,render_mode=render_mode, simple_actions=True)
     #env_multitask1 = MultitaskEnv(agentPOV=pov, task=1, render_mode=render_mode)
     #env_multitask2 = MultitaskEnv(agentPOV=pov, task=2, render_mode=render_mode)

@@ -34,14 +34,16 @@ class ForwardView(AgentPOV):
         pov_width: int,
         env_size: tuple[int, int],
         xray: bool = False,
+        simple_observation_space: bool = True
     ) -> None:
         self.pov_width = pov_width
         self.pov_length = pov_length
         self.xray = xray
         action_space = spaces.Discrete(4)
         number_of_cells = (pov_length + 1) * pov_width
+        observation_space_shape = (number_of_cells,) if simple_observation_space else (number_of_cells,3)
         observation_space = spaces.Box(
-            shape=(number_of_cells,), high=10, low=0, dtype=np.int64
+            shape=observation_space_shape, high=10, low=0, dtype=np.int64
         )
         super().__init__(action_space, observation_space, env_size)
 

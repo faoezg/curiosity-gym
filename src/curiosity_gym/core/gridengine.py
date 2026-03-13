@@ -141,7 +141,7 @@ class GridEngine(gym.Env, ABC):
         """
         self.step_count += 1
         self.pos_count[tuple(self.objects.agent.position)] += 1
-        obs = self._get_simplified_obs(self._get_obs())
+        obs = self._get_obs()
 
         reward = self._calc_reward(action)
 
@@ -205,7 +205,7 @@ class GridEngine(gym.Env, ABC):
             ob.reset()
         self.step_count = 0
         self.pos_count[tuple(self.objects.agent.position)] += 1
-        return (self._get_simplified_obs(self._get_obs()), self._get_info())
+        return (self._get_obs(), self._get_info())
 
     def render(self) -> np.ndarray | None:
         """Compute the render frames as specified by 
@@ -299,17 +299,6 @@ class GridEngine(gym.Env, ABC):
             state[x + y * self.env_settings.width] = ob.get_identity()
         return state
     
-    def _get_simplified_obs(self, raw_obs: np.ndarray) -> np.ndarray:
-        simplified_state = np.zeros(len(raw_obs), dtype=int)
-
-        # This works as long as (id, colour) from a primary key regarding objects
-        for idx, cell in enumerate(raw_obs):
-            simplified_state[idx] = cell[0] + cell[1] + cell[2]
-
-        return simplified_state
-
-
-
     def heatmap(self) -> Figure | None:
         """Display heatmap of position counts of the agent."""
         max_col = max(key[0] for key in self.pos_count.keys())
@@ -404,7 +393,24 @@ class GridEngine(gym.Env, ABC):
         return {"Current Steps": self.step_count}
 
     def _get_obs(self) -> np.ndarray:
-        return self.agent_pov.transform_obs(self.get_state(), self.objects.agent)
+        obs = self.agent_pov.transform_obs(self.get_state(), self.objects.agent)
+        if (self.env_settings.simple_obs):
+            obs = self._simplifiey_obs(obs)
+        print("OBS WWW", obs.shape)
+        return obs
+
+    def _simplifiey_obs(self, raw_obs: np.ndarray) -> np.ndarray:
+        simplified_state = np.zeros(len(raw_obs), dtype=int)
+
+        # This works as long as (id, colour) from a primary key regarding objects
+        for idx, cell in enumerate(raw_obs):
+            simplified_state[idx] = cell[0] + cell[1] + cell[2]
+
+        return simplified_state
+
+
+
+
 
     def _get_terminated(self) -> bool:
         return self._check_harmful(self.objects.agent.position) or self.check_task()
@@ -423,7 +429,7 @@ class GridEngine(gym.Env, ABC):
         # Construct pov by string
         xray = False
         if agent_pov.lower() == "global":
-            return GlobalView((self.env_settings.width, self.env_settings.height))
+            return GlobalView((self.env_settings.width, self.env_settings.height), self.env_settings.simple_obs)
 
         if agent_pov.lower().startswith("local_"):
             radius = agent_pov[6:]
@@ -436,7 +442,7 @@ class GridEngine(gym.Env, ABC):
                 radius.isnumeric() and int(radius) >= 0
             ), f"Invalid radius for local pov: {radius}"
             return LocalView(
-                int(radius), (self.env_settings.width, self.env_settings.height), xray
+                int(radius), (self.env_settings.width, self.env_settings.height), xray, self.env_settings.simple_obs
             )
 
         if agent_pov.lower().startswith("forward_"):
@@ -462,6 +468,7 @@ class GridEngine(gym.Env, ABC):
                 int(pov_width),
                 (self.env_settings.width, self.env_settings.height),
                 xray,
+                self.env_settings.simple_obs
             )
 
         raise ValueError(f"Invalid agent pov: {agent_pov}.")
