@@ -399,11 +399,12 @@ class GridEngine(gym.Env, ABC):
         return obs
 
     def _simplifiey_obs(self, raw_obs: np.ndarray) -> np.ndarray:
+        offset = 3 # reduce chance for (id + colour) to map to same int
         simplified_state = np.zeros(len(raw_obs), dtype=int)
 
         # This works as long as (id, colour) from a primary key regarding objects
         for idx, cell in enumerate(raw_obs):
-            simplified_state[idx] = cell[0] + cell[1] + cell[2]
+            simplified_state[idx] = (cell[0] * offset) + cell[1] + cell[2]
 
         return simplified_state
 
