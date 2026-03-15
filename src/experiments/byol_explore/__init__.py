@@ -4,7 +4,7 @@ gym.register(
     id="SparseEnv-ByolExplore",
     entry_point="experiments.byol_explore.byol_gym_factory:make_byol_env",
     kwargs={
-        "base_env_id":"SparseEnv"
+        "base_env_id":"SparseEnv",
     }
 )
 
@@ -12,7 +12,8 @@ gym.register(
     id="DistractiveEnv-ByolExplore",
     entry_point="experiments.byol_explore.byol_gym_factory:make_byol_env",
     kwargs={
-        "base_env_id":"DistractiveEnv"
+        "base_env_id":"DistractiveEnv",
+        "time_horizon":10
     }
 )
 

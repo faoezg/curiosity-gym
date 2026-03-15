@@ -396,7 +396,6 @@ class GridEngine(gym.Env, ABC):
         obs = self.agent_pov.transform_obs(self.get_state(), self.objects.agent)
         if (self.env_settings.simple_obs):
             obs = self._simplifiey_obs(obs)
-        print("OBS WWW", obs.shape)
         return obs
 
     def _simplifiey_obs(self, raw_obs: np.ndarray) -> np.ndarray:
