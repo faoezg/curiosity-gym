@@ -55,9 +55,6 @@ class GridObject(ABC):
         self.start_state = state
         self.state = state
 
-        #if (self.identifier != None):
-        #     self.identifier += random.random()
-
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         cls.identifier = GridObject._next_id

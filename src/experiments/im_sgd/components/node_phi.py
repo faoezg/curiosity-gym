@@ -2,21 +2,17 @@
 # state s may be another Node
 # Nodes keep track of where there outgoing options (N -> o_n -> s) terminates
 
-class Node():
+from .node import Node
+from typing import override
 
-    _next_id = 1
+# Special node to account for state which are not part of a Node yet, e.g. "falling of the edge of the graph"
+class NodePhi(Node):
 
     def __init__(self) -> None:
-        self.identifier = Node._next_id
-        Node._next_id += 1
-
+        self.identifier = -1
         self.terminal_states = [] # the outgoing option o_n terminated here, |Eff(o_n)|
     
+    @override
     def get_propabliity_to_terminate_in_state_after_option(self, state):
         propability = 0.0
-        if (state in self.terminal_states):
-            propability = 1/len(self.terminal_states)
         return propability
-
-
-    
