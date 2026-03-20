@@ -8,19 +8,31 @@ class CoinFlipWrapper(gym.Wrapper):
         device: device,
         env: gym.Env,
         cfm: CoinFlipModel,
+        intrinsic_reset_threshold: float = 0.5
     ):
         super().__init__(env)
         self.device = device
         self.cfm = cfm
+        self.last_best_global_state = None
+        self.last_best_intrinsic_reward = 0.0
+        self.intrinsic_reset_threshold = intrinsic_reset_threshold
 
     def reset(self, **kwargs):
-        obs, info = self.env.reset(**kwargs)
+        if self.last_best_global_state is None:
+            obs, info = self.env.reset(**kwargs)
+        else:
+            obs, info = self.env.reset_to_specific_global_state(self.last_best_global_state, **kwargs)
         self.prev_state = obs
         return obs, info
 
     def step(self, action):
-        state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
+        state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action) # type: ignore
         intrinsic_reward = self.cfm.calc_intrinsic_reward(state, action)
+        if (self.last_best_intrinsic_reward <= self.intrinsic_reset_threshold):
+            self.last_best_global_state = None
+        elif (intrinsic_reward >= self.last_best_intrinsic_reward):
+            self.last_best_intrinsic_reward = intrinsic_reward
+            self.last_best_global_state = raw_global_state
         reward = extrinsic_reward + intrinsic_reward # type: ignore
 
         info["extrinsic_reward"] = extrinsic_reward

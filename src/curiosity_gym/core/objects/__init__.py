@@ -1,4 +1,4 @@
-from .grid_object  import GridObject
+from .grid_object  import GridObject, ObjectState
 from .agent        import Agent
 from .ball         import Ball
 from .door         import Door

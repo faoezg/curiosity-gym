@@ -18,7 +18,6 @@ gym.register(
     entry_point="experiments.coin_flip.coin_flip_factory:make_coin_flip_env",
     kwargs={
         "base_env_id":"DistractiveEnv",
-        "time_horizon":10
     }
 )
 

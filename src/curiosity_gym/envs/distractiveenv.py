@@ -54,7 +54,7 @@ class DistractiveEnv(GridEngine):
         simple_actions: bool = False,
         simple_obs: bool = True
     ) -> None:
-
+        print("RENDERMODE", render_mode)
         env_settings = EnvironmentSettings(
             min_steps=40,
             max_steps=50,

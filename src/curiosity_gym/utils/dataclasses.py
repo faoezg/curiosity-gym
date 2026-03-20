@@ -108,3 +108,4 @@ class EnvironmentObjects:
         return np.concatenate(
             (np.array([self.target]), self.other, np.array([self.agent]))
         )
+

@@ -8,13 +8,20 @@ within the environment.
 import copy
 from abc import ABC, abstractmethod
 from typing_extensions import Self
+from dataclasses import dataclass
 
 import numpy as np
 import pygame
 
 from curiosity_gym.utils.enums import Action, SimplerAction
 
-import random
+@dataclass
+class ObjectState:
+    x_pos: int
+    y_pos: int
+    color: int
+    state: int
+    identifier: int
 
 class GridObject(ABC):
     """Abstract class representing elements that can be placed in a grid environment. \n
@@ -180,3 +187,12 @@ class GridObject(ABC):
             :const:`True` if grid object is harmful, :const:`False` otherwise.
         """
         return False
+
+    def get_object_state(self) -> ObjectState:
+        return ObjectState(
+            x_pos=self.position[0],
+            y_pos=self.position[1],
+            color=self.color,
+            state=self.state,
+            identifier=id(self)
+        )

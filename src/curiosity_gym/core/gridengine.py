@@ -17,7 +17,7 @@ import pygame
 import pandas as pd
 import seaborn as sns
 
-from curiosity_gym.core.objects import GridObject, Wall
+from curiosity_gym.core.objects import GridObject, Wall, ObjectState
 from curiosity_gym.core.pov import AgentPOV, GlobalView, LocalView, ForwardView
 from curiosity_gym.utils.enums import Action, SimplerAction
 from curiosity_gym.utils.dataclasses import (
@@ -159,6 +159,11 @@ class GridEngine(gym.Env, ABC):
             self._get_truncated(),
             self._get_info(),
         )
+    
+    def step_with_global_state(self, action):
+        obs, reward, terminated, truncated, info = self.step(action)
+        raw_global_obs = self.get_raw_state()
+        return obs, reward, terminated, truncated, info, raw_global_obs
 
     def _calc_reward(self, action: int | Action | SimplerAction):
         external_reward = self._calc_obj_reward(action) + self._calc_task_reward()
@@ -206,6 +211,19 @@ class GridEngine(gym.Env, ABC):
         self.step_count = 0
         self.pos_count[tuple(self.objects.agent.position)] += 1
         return (self._get_obs(), self._get_info())
+    
+    def reset_to_specific_global_state(self, raw_state: list[ObjectState], **kwargs):
+        _, inital_info = self.reset(**kwargs)
+        obj_array: list[GridObject] = list(self.objects.other) + [self.objects.agent, self.objects.target]
+        for grid_object in obj_array:
+            for obj_state in raw_state:
+                if id(grid_object) == obj_state.identifier:
+                    grid_object.position[0] = obj_state.x_pos
+                    grid_object.position[1] = obj_state.y_pos
+                    grid_object.color = obj_state.color
+                    grid_object.state = obj_state.state
+        return self._get_obs(), inital_info
+
 
     def render(self) -> np.ndarray | None:
         """Compute the render frames as specified by 
@@ -297,6 +315,24 @@ class GridEngine(gym.Env, ABC):
             ), f"""Position [{x},{y}] of object with type {self.get_object_ids()[ob.identifier]}
             is invalid for grid with size ({self.env_settings.width}, {self.env_settings.height})"""
             state[x + y * self.env_settings.width] = ob.get_identity()
+        return state
+
+    def get_raw_state(self) -> list[ObjectState]:
+        """Get the current state of the environment.\n
+        The returned state is independent of the agent's :attr:`observation_space`.
+
+        Returns
+        -------
+        state : np.ndarray
+            Current state of the environment.
+        """
+        state = [] * self.env_settings.width * self.env_settings.height
+        for ob in self.objects.get_all():
+            x, y = ob.position
+            assert x < self.env_settings.width and y < self.env_settings.height
+            f"""Position [{x},{y}] of object with type {self.get_object_ids()[ob.identifier]}
+            is invalid for grid with size ({self.env_settings.width}, {self.env_settings.height})"""
+            state.append(ob.get_object_state()) 
         return state
     
     def heatmap(self) -> Figure | None:

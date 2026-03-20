@@ -51,7 +51,7 @@ class PriorityReplayBuffer():
     
     def update_prioritites(self, indicies: np.ndarray, new_priorities: np.ndarray) -> None:
         for idx, new_priority in zip(indicies, new_priorities):
-            self.priorities[idx] =new_priority 
+            self.priorities[idx] = new_priority 
        
     def _get_sample_indicies(self, batch_size: int) -> tuple[np.ndarray, np.ndarray]:
         if (len(self) < batch_size):
@@ -67,4 +67,4 @@ class PriorityReplayBuffer():
     def __len__(self) -> int:
         return len(self.buffer)
 
-           
+ 
