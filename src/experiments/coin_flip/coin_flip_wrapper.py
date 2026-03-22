@@ -13,6 +13,10 @@ class CoinFlipWrapper(IntrinsicMotivationModelWrapper):
     ):
         super().__init__(env, cfm, device, intrinsic_reset_threshold)
         self.intrinsic_model: CoinFlipModel = self.intrinsic_model
+    
+    def reset(self, **kwargs):
+        self.intrinsic_model.reset()
+        return super().reset(**kwargs)
 
     def _get_intrinsic_reward_from_model(self, state, action):
         return self.intrinsic_model.calc_intrinsic_reward(state, action)

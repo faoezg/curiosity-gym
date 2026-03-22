@@ -103,7 +103,6 @@ class CoinFlipModel(IntrinsicMotivationModel):
         self.buffer.update_prioritites(indicies, new_priorities)
         self.num_updates[indicies] += 1
 
-
     def reset(self):
         self.prev_state = None
         self.step_count = 0

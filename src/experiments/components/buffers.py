@@ -28,6 +28,9 @@ class ReplayBuffer():
     
     def sample(self, batch_size: int) -> list[Transition]:
         return random.sample(self.buffer, min(batch_size, len(self.buffer)))
+    
+    def is_fully_populated(self) -> bool:
+        return len(self.buffer) == self.size
 
     def __len__(self) -> int:
         return len(self.buffer)
@@ -63,6 +66,9 @@ class PriorityReplayBuffer():
             probs /= probs.sum()
             indicies = np.random.choice(len(self), batch_size, p=probs, replace=False)
         return indicies, probs
+
+    def is_fully_populated(self) -> bool:
+        return len(self.buffer) == self.size
 
     def __len__(self) -> int:
         return len(self.buffer)

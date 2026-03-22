@@ -7,7 +7,7 @@ from .icm_model import ICMModel
 class ICMCuriosityWrapper(IntrinsicMotivationModelWrapper):
     def __init__(
         self,
-        device: device,
+        device: device | str,
         env: GridEngine,
         icm: ICMModel,
         intrinsic_reset_threshold: float = -1

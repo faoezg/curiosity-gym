@@ -3,9 +3,8 @@ from torch import nn, device
 import torch.nn.functional as F
 import copy
 
-
 # following Z. Guo et. al. 2022
-class ByolExploreModel(nn.Module):
+class ByolExploreNetwork(nn.Module):
     ACTION_EMBEDDING_DIM = 32
     def __init__(self,
                  state_dim: int,
@@ -13,7 +12,7 @@ class ByolExploreModel(nn.Module):
                  hidden_dim: int,
                  latent_rep_dim: int,
                  time_horizon: int,
-                 device: device,
+                 device: device | str,
                  alpha: float = 0.99,
                  ) -> None:
         super().__init__()
@@ -29,7 +28,8 @@ class ByolExploreModel(nn.Module):
         self._init_target_model(alpha)
     
     def forward(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor):
-        B, T, C = state_buffer.shape
+        B, T, C = state_buffer.shape 
+
         state_encoding = self.encoder_model(state_buffer.view(B * T, C)).view(B, T, self.latent_rep_dim)
         state_projection = self.projection_model(state_encoding)
 

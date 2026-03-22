@@ -6,7 +6,7 @@ from experiments.experiment_setup.harness import ExperimentHarness
 from experiments.experiment_setup.experiment_model import ExperimentModel
 from experiments.experiment_setup.experiment_evaluator import ExperimentEvaluator
 
-from experiments.byol_explore.byol_explore import ByolExploreModel
+from experiments.byol_explore.byol_model import ByolExploreModel
 from experiments.byol_explore.byol_wrapper import ByolExploreWrapper
 
 import torch

@@ -24,7 +24,7 @@ class ICMModel(IntrinsicMotivationModel):
         Scaler of the intrinsic reward
     """
     def __init__(self,
-                 device: device,
+                 device: device | str,
                  state_dim: int,
                  action_dim: int,
                  latent_rep_dim: int,

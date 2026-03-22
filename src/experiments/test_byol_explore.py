@@ -7,7 +7,7 @@ from experiments.experiment_setup.harness import ExperimentHarness
 from experiments.experiment_setup.experiment_model import ExperimentModel
 from experiments.experiment_setup.experiment_evaluator import ExperimentEvaluator
 
-from experiments.byol_explore.byol_explore import ByolExploreModel
+from experiments.byol_explore.byol_model import ByolExploreModel
 from experiments.byol_explore.byol_wrapper import ByolExploreWrapper
 
 import torch
@@ -20,20 +20,20 @@ print("Running own models on: ", DEVICE)
 
 def _setup_byold_explore_model_for_env(env: GridEngine) -> ByolExploreModel:
     observation_space_shape = env.observation_space.shape
-    flattened_observation_space = observation_space_shape[0] * observation_space_shape[1] # type: ignore
-    return ByolExploreModel(state_dim=flattened_observation_space, # type: ignore
+    return ByolExploreModel(state_dim=observation_space_shape[0], # type: ignore
                             action_dim=env.action_space.n, # type: ignore
                             hidden_dim=8,
                             latent_rep_dim=4,
                             time_horizon=5,
                             device=DEVICE,
-                            alpha=0.9999).to(DEVICE)
+                            alpha=0.9999,
+                            reward_norm_decay=0.2)
 
 def _setup_base_envs() -> list[GridEngine]:
     envs = []
     pov =  "local_2"
     render_mode = "rgb_array" 
-    env_sparse = SparseEnv(agentPOV=pov, render_mode=render_mode, simple_actions=True, simple_obs=False)
+    env_sparse = SparseEnv(agentPOV=pov, render_mode=render_mode, simple_actions=True, simple_obs=True)
     # env_distractive = DistractiveEnv(agentPOV=pov,render_mode=render_mode, simple_actions=True)
     #env_multitask1 = MultitaskEnv(agentPOV=pov, task=1, render_mode=render_mode)
     #env_multitask2 = MultitaskEnv(agentPOV=pov, task=2, render_mode=render_mode)
@@ -50,7 +50,7 @@ def _setup_wrapped_envs() -> list[tuple[ByolExploreWrapper, str]]:
     base_envs = _setup_base_envs()
     for env in base_envs:
         count_model = _setup_byold_explore_model_for_env(env)
-        wrapped_envs.append((ByolExploreWrapper(env, count_model, DEVICE, reward_norm_decay=0.2), env.name))
+        wrapped_envs.append((ByolExploreWrapper(env, count_model, DEVICE), env.name))
     return wrapped_envs
 
 def _setup_vec_envs() -> list[tuple[VecNormalize, str]]:

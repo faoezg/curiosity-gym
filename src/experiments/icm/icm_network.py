@@ -21,15 +21,13 @@ class ICMNetwork(nn.Module):
         Scaler of the intrinsic reward
     """
     def __init__(self,
-                 device: device,
+                 device: device | str,
                  state_dim: int,
                  action_dim: int,
                  latent_rep_dim: int,
                  hidden_dim: int,
                  beta: float,
-                 eta: float,
-                 learning_rate: float = 0.001
-                 ):
+                 eta: float):
                  super().__init__()
                  self.device = device
                  self.action_dim = action_dim

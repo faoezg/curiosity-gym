@@ -21,6 +21,8 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.last_best_intrinsic_reward = 0.0
         self.intrinsic_reset_threshold = intrinsic_reset_threshold
 
+        self.reset()
+
     def reset(self, **kwargs):
         if self.last_best_global_state is None:
             obs, info = self.env.reset(**kwargs)
@@ -32,11 +34,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
     def step(self, action):
         state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action)
         intrinsic_reward = self._get_intrinsic_reward_from_model(state=state, action=action)
-        if (self.last_best_intrinsic_reward <= self.intrinsic_reset_threshold):
-            self.last_best_global_state = None
-        elif (intrinsic_reward >= self.last_best_intrinsic_reward):
-            self.last_best_intrinsic_reward = intrinsic_reward
-            self.last_best_global_state = raw_global_state
+        self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state)
         reward = extrinsic_reward + intrinsic_reward
 
         info["extrinsic_reward"] = extrinsic_reward
@@ -46,6 +44,13 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.prev_state = state
 
         return state, reward, terminated, truncated, info
+    
+    def _handle_new_intrinsic_reward(self, intrinsic_reward, raw_global_state):
+        if (self.last_best_intrinsic_reward <= self.intrinsic_reset_threshold):
+            self.last_best_global_state = None
+        elif (intrinsic_reward >= self.last_best_intrinsic_reward):
+            self.last_best_intrinsic_reward = intrinsic_reward
+            self.last_best_global_state = raw_global_state
 
     @abstractmethod
     def _get_intrinsic_reward_from_model(self, *args, **kwargs) -> float | Any:

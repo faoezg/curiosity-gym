@@ -1,46 +1,38 @@
-from collections import deque
-from curiosity_gym.core.gridengine import GridEngine
-from .byol_explore import ByolExploreModel
-from .reward_normaliser import RewardNormaliser
 import gymnasium as gym
 import torch
 from torch import device
+from collections import deque
 
-class ByolExploreWrapper(gym.Wrapper):
+from curiosity_gym.core.gridengine import GridEngine
+from .byol_model import ByolExploreModel
+from experiments.components import IntrinsicMotivationModelWrapper
+from experiments.components.buffers import ReplayBuffer, Transition
+
+class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
     def __init__(
         self,
         env: GridEngine,
         byol_explore_model: ByolExploreModel,
         device: device,
-        lambda_byol: float = 5.0, # λ_byol in the paper
-        reward_norm_decay: float = 0.99,
+        intrinsic_reset_threshold: float = 0.5,
     ):
-        super().__init__(env)
-        self.device = device 
-        self.model = byol_explore_model
-        self.opt = torch.optim.Adam(self.model.parameters())
-
-        self.norm = RewardNormaliser(decay=reward_norm_decay)
-
-        self.lambda_byol = lambda_byol
-        self.buffer = deque(maxlen=byol_explore_model.time_horizon + 1)
-        self.prev_action = None
-
-    def reset(self, **kwargs):
-        state, info = self.env.reset(**kwargs)
-        return state, info
+        super().__init__(env, byol_explore_model, device, intrinsic_reset_threshold)
+        self.intrinsic_model: ByolExploreModel = self.intrinsic_model
+        self.buffer = ReplayBuffer(size=self.intrinsic_model.byol_network.time_horizon + 1)
 
     def step(self, action):
-        state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
-        self.buffer.append((state, action))
+        state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action)
 
-        if len(self.buffer) == self.model.time_horizon + 1:
+        transition = Transition(self.prev_state, state, action)
+        self.buffer.add(transition)
+
+        if self.buffer.is_fully_populated():
             state_buffer, action_buffer = self._create_trajectory()
+            intrinsic_reward, byol_loss = self.intrinsic_model.calc_intrinsic_reward(state_buffer, action_buffer)
+            self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state)
+            reward = extrinsic_reward + intrinsic_reward # type: ignore
 
-            intrinsic_reward, byol_loss = self._calc_intrinsic_reward_and_loss(state_buffer, action_buffer)
-            reward = extrinsic_reward + self.lambda_byol * intrinsic_reward # type: ignore
-
-            self._train_byol_explore_model(byol_loss)
+            self.intrinsic_model._train_network(byol_loss)
         else:
             reward = extrinsic_reward
             intrinsic_reward = 0.0
@@ -49,18 +41,20 @@ class ByolExploreWrapper(gym.Wrapper):
         info["intrinsic_reward"] = intrinsic_reward
         info["total_reward"] = reward 
 
-        # print(info)
-
         return state, reward, terminated, truncated, info 
+
 
     def _create_trajectory(self):
         state_tensors = []
         actions = []
-        for state, action in self.buffer:
-            state_tensors.append(torch.from_numpy(state))
-            actions.append(action)
+        samples = self.buffer.sample(len(self.buffer))
 
-        state_buffer = torch.stack(state_tensors,dim=0,).unsqueeze(0) # (B=1, T=2, N, 3)
+        for transition in samples:
+            state_tensor = torch.from_numpy(transition.next_state)
+            state_tensors.append(state_tensor)
+            actions.append(transition.action)
+
+        state_buffer = torch.stack(state_tensors, dim=0).unsqueeze(0) # (B=1, T=2, N, 3)
         state_buffer = state_buffer.to(torch.float32).to(self.device)
 
         action_buffer = torch.tensor(
@@ -77,10 +71,3 @@ class ByolExploreWrapper(gym.Wrapper):
         norm_intrinsic_reward = self.norm(raw_intrinsic_reward).detach()
         intrinsic_reward = norm_intrinsic_reward[0].item()
         return intrinsic_reward, byol_loss
-
-    def _train_byol_explore_model(self, byol_loss: torch.Tensor):
-        self.opt.zero_grad()
-        (byol_loss * self.lambda_byol).backward()
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-        self.opt.step()
-        self.model.update_target_model()

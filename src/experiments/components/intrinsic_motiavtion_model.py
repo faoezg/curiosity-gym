@@ -8,7 +8,7 @@ class IntrinsicMotivationModel(ABC):
         pass
 
     @abstractmethod
-    def calc_intrinsic_reward(self, *args, **kwargs) -> float | Any:
+    def calc_intrinsic_reward(self, *args, **kwargs) -> Any:
         pass
 
     @abstractmethod
