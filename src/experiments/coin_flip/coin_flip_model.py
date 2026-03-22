@@ -4,10 +4,10 @@ from torch import device, optim
 from .coin_flip_network import CoinFlipNetwork
 from .buffer import CFNTransition
 from .rademacher_generator import RademacherDistGenerator
-from experiments.utils.buffers import PriorityReplayBuffer
+from experiments.components import PriorityReplayBuffer, IntrinsicMotivationModel
 import numpy as np
 
-class CoinFlipModel():
+class CoinFlipModel(IntrinsicMotivationModel):
     def __init__(self,
                  state_dim: int,
                  hidden_dim: int = 100,

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from experiments.utils.buffers import PriorizedTransition
+from experiments.components.buffers import PriorizedTransition
 
 import numpy as np
 

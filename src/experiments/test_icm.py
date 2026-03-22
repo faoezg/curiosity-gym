@@ -7,8 +7,8 @@ from experiments.experiment_setup.harness import ExperimentHarness
 from experiments.experiment_setup.experiment_model import ExperimentModel
 from experiments.experiment_setup.experiment_evaluator import ExperimentEvaluator
 
-from experiments.icm.icm import ICMModel
-from experiments.icm.icm_reward_wrapper import ICMCuriosityWrapper
+from experiments.icm.icm_model import ICMModel
+from experiments.icm.icm_wrapper import ICMCuriosityWrapper 
 
 import torch
 
@@ -21,16 +21,16 @@ EVAL_EPISODES = 1
 def _setup_icm_for_env(env: GridEngine) -> ICMModel:
     # TODO FIX TYPE IGNORE
     observation_space_shape = env.observation_space.shape
-    flattened_observation_space = observation_space_shape[0] * observation_space_shape[1]
     icm = ICMModel(
         device = DEVICE,
-        state_dim=flattened_observation_space, # type: ignore
+        state_dim=observation_space_shape[0], # type: ignore
         action_dim=env.action_space.n, # type: ignore
         latent_rep_dim=32,
         hidden_dim=64,
-        beta = .2,
-        eta = 0.03 
-    ).to(DEVICE)
+        beta=.2,
+        eta=0.03,
+        icm_lr=ICM_LR
+    )
     return icm
 
 def _setup_base_envs() -> list[GridEngine]:
@@ -57,7 +57,7 @@ def _setup_wrapped_envs() -> list[tuple[ICMCuriosityWrapper, str]]:
     base_envs = _setup_base_envs()
     for env in base_envs:
         icm = _setup_icm_for_env(env)
-        wrapped_envs.append((ICMCuriosityWrapper(DEVICE, env, icm, ICM_LR), env.name))
+        wrapped_envs.append((ICMCuriosityWrapper(DEVICE, env, icm), env.name))
     return wrapped_envs
 
 def _setup_vec_envs() -> list[tuple[VecNormalize, str]]:
