@@ -1,4 +1,6 @@
 from .buffers import ReplayBuffer as ReplayBuffer
 from .buffers import PriorityReplayBuffer as PriorityReplayBuffer
+from .buffers import Transition as Transition
+from .buffers import PriorizedTransition as PriorizedTransition
 from .intrinsic_motiavtion_model import IntrinsicMotivationModel as IntrinsicMotivationModel
 from .intrinsic_motiavtion_model_wrapper import IntrinsicMotivationModelWrapper as IntrinsicMotivationModelWrapper

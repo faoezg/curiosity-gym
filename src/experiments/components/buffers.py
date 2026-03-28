@@ -1,6 +1,5 @@
 from collections import deque
 from dataclasses import dataclass
-from typing import override
 from curiosity_gym.utils.enums import Action
 
 import numpy as np
@@ -9,8 +8,9 @@ import random
 @dataclass
 class Transition():
     state: np.ndarray
-    next_state: np.ndarray
     action: Action | int | float
+    reward: float
+    next_state: np.ndarray
 
 @dataclass
 class PriorizedTransition(Transition):
@@ -50,6 +50,7 @@ class PriorityReplayBuffer():
         indicies, probs = self._get_sample_indicies(batch_size)
         samples = [self.buffer[i] for i in indicies]
         weights = (len(self) * probs[indicies]) ** (-1.0)
+        weights = weights / weights.max()
         return samples, indicies, weights
     
     def update_prioritites(self, indicies: np.ndarray, new_priorities: np.ndarray) -> None:

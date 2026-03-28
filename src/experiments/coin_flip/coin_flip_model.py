@@ -5,6 +5,7 @@ from .coin_flip_network import CoinFlipNetwork
 from .buffer import CFNTransition
 from .rademacher_generator import RademacherDistGenerator
 from experiments.components import PriorityReplayBuffer, IntrinsicMotivationModel
+from curiosity_gym.utils.enums import Action
 import numpy as np
 
 class CoinFlipModel(IntrinsicMotivationModel):
@@ -41,7 +42,7 @@ class CoinFlipModel(IntrinsicMotivationModel):
     def _np_array_to_tensor(self, state: np.ndarray):
         return torch.tensor(state, dtype=torch.float32, device=self.device)
 
-    def calc_intrinsic_reward(self, state: np.ndarray, action: int):
+    def calc_intrinsic_reward(self, state: np.ndarray, action: Action | int):
         state_tensor = self._np_array_to_tensor(state)
         rademacher_sample = self.rademacher_generator()
 
@@ -50,6 +51,7 @@ class CoinFlipModel(IntrinsicMotivationModel):
             transition = CFNTransition(
                 state=prev_state,
                 next_state=state,
+                reward=0.0,
                 coin_flip_vector=rademacher_sample,
                 action=action,
                 priority=1.0

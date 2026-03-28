@@ -28,4 +28,4 @@ def make_icm_env(
             eta=0.03,
         )
 
-    return ICMCuriosityWrapper(device, raw_env, icm)
+    return ICMCuriosityWrapper(device, raw_env, icm, 0.1)
