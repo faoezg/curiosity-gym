@@ -1,6 +1,5 @@
 import unittest
 from typing import override
-import numpy as np
 
 from experiments.coin_flip import CoinFlipModel
 from experiments.im_dsg.components import Node, SkillGraph

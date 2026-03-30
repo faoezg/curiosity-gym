@@ -20,6 +20,7 @@ class SkillGraph():
                  goal_value_threshold: float) -> None:
         self.adjacency_list: dict[int, dict[int, float]] = defaultdict(defaultdict) # going with list, as this should end up as a sparse dag
         self.edge_transition_counts: dict[int, dict[int, int]] = defaultdict(defaultdict) # going with list, as this should end up as a sparse dag
+        self.edge_reward_matrix: dict[int, dict[int, float]] = defaultdict(defaultdict) # going with list, as this should end up as a sparse dag
         self.node_visitation_counts: dict[int, int] = defaultdict(int)
         self.nodes: list[Node] = []
 
@@ -41,6 +42,7 @@ class SkillGraph():
     def _add_edge(self, from_node_id: int, to_node_id: int):
         self.adjacency_list[from_node_id][to_node_id] = 0.1 # set inital transition propability
         self.edge_transition_counts[from_node_id][to_node_id] = 0 # set inital edge transition count
+        self.edge_reward_matrix[from_node_id][to_node_id] = 0.0 # set inital edge reward count
     
     def remove_edge(self, from_node_id: int, to_node_id: int):
         self.adjacency_list[from_node_id].pop(to_node_id)
@@ -48,14 +50,24 @@ class SkillGraph():
     # This method will also add a new edge between nodes, if not yet present
     # Thereby clearing the "within H steps" heuristic as any option will terminate after H steps
     # which will continue the agent logic and map the state to a node
-    def update_edge(self, from_node_id: int, to_node_id: int, state):
+    def update_edge(self, from_node_id: int, to_node_id: int, accumulated_reward_during_option: float):
         self.node_visitation_counts[from_node_id] += 1
         self.node_visitation_counts[to_node_id] += 1
         self.edge_transition_counts[from_node_id][to_node_id] += 1
+        self.edge_reward_matrix[from_node_id][to_node_id] += accumulated_reward_during_option
+
         count = self.edge_transition_counts[from_node_id][to_node_id]
         new_weight = self.edge_weight_scalar * (1/np.sqrt(count))
         self.adjacency_list[from_node_id][to_node_id] = new_weight
     
+    def reset_edge_reward(self, from_node_id: int, to_node_id: int):
+        self.edge_reward_matrix[from_node_id][to_node_id] = 0 
+    
+    def _reset_all_edge_rewards(self):
+        for from_node_identifier in self.edge_reward_matrix.keys():
+            for to_node_identifier in self.edge_reward_matrix[from_node_identifier].keys():
+                self.edge_reward_matrix[from_node_identifier][to_node_identifier] = 0
+
     def add_edge(self, from_node_id: int, to_node_id: int, state):
         goal_value = self._calc_goal_conditioned_value(from_node_id, to_node_id, state)
         if (goal_value > self.goal_value_threshold):
@@ -74,7 +86,6 @@ class SkillGraph():
         
         goal_state = goal_node.terminal_states[0] # TODO which should this be? In the paper nodes map to multiple states...
         # action does not matter here, as the reward is in regards of the goal beeing reached, which is the state
-        # thus if the
         pred_value = self.q_model.calc_q_value(state, goal_state, 0) 
         goal_conditioned_value = pred_value.item()
         count = min(self.node_visitation_counts[from_node_id], self.node_visitation_counts[to_node_id])
@@ -100,12 +111,12 @@ class SkillGraph():
                     descendants.append(node)
         return descendants
     
-    def _calc_expansion_node(self, state: np.ndarray, action: Action | int):
+    def calc_expansion_node(self, state: np.ndarray, action: Action | int) -> Node:
         state_associated_nodes = self.map_state_to_nodes(state)
         state_utility = self._calc_utility_of_state(state, action)
 
         best_utility = 0.0
-        best_node = None
+        best_node = NodePhi() 
         for node in state_associated_nodes:
             accumulated_descendant_utility = self._calc_utility_of_descendants(state, node.identifier, action)
             utility = state_utility / accumulated_descendant_utility
@@ -149,3 +160,64 @@ class SkillGraph():
                         queue.append(connected_node_identifier)
                         visited[connected_node_identifier]
         return False
+    
+    def get_abstract_policy(self):
+        q_matrix = self._solve_amdp_with_value_iteration()
+
+        abstract_policy = {}
+        for node in self.nodes:
+            # greedy policy, indexing q gives a node
+            # togher with the iteration over all nodes we get a one-step policy for every node
+            # where the action is given by the edge, that is to say, the option
+            best_option = int(q_matrix[node.identifier].argmax())
+            abstract_policy[node.identifier] = best_option
+        
+        return abstract_policy
+    
+    def _solve_amdp_with_value_iteration(self):
+        CONVERGENCE_THRESHOLD = 0.001
+        is_converged = False
+        abstract_transition_matrix, abstract_reward_matrix, abstract_gamma = self._build_abstract_mdp()
+
+        value_matrix = np.zeros(abstract_transition_matrix.shape[0])
+        q_matrix = np.zeros(abstract_transition_matrix.shape)
+
+        while(not is_converged):
+            q_matrix = abstract_reward_matrix + (abstract_gamma * (abstract_transition_matrix @ value_matrix[:, None]))
+            updated_value_matrix = q_matrix.max(axis=1)
+            value_matrices_distance = np.max(np.abs(updated_value_matrix - value_matrix))
+            if (value_matrices_distance <= CONVERGENCE_THRESHOLD):
+                is_converged = True
+            value_matrix = updated_value_matrix
+
+        return q_matrix
+
+    def _build_abstract_mdp(self) -> tuple[np.ndarray, np.ndarray, float]:
+        node_count = len(self.nodes) + 1 # + 1 for the "falling of" NodePhi
+        # Yes, the matricies are duplicate data, no, I do not care.
+        # We need those square matrices for nice and easy calculation later
+        transition_matrix = np.zeros((node_count, node_count)) # square and sparse matrix, can not be botherd to optimizse as it is small
+        reward_matrix = np.zeros((node_count, node_count)) # square and sparse matrix, can not be botherd to optimizse as it is small
+
+
+        for i, node in enumerate(self.nodes):
+            all_outgoing_edges_of_node = self.adjacency_list[node.identifier].items()
+            for j, weight in all_outgoing_edges_of_node:
+                transition_matrix[i,j] = weight
+                reward_matrix[i,j] = self.edge_reward_matrix[i][j]
+            # chance to fall of the graph then leaving a certain node_i
+            chance_to_fall_of_the_graph_coming_from_node = (1.0 - transition_matrix[i, :].sum())
+            transition_matrix[i, -1] = max(0.0, chance_to_fall_of_the_graph_coming_from_node)
+
+        gamma = transition_matrix[:, -1].sum() /  node_count # TODO not sure about this one chief
+
+        return reward_matrix, transition_matrix, gamma
+
+    def get_node_by_identifier(self, node_identifier: int) -> Node:
+        for node in self.nodes:
+            if (node.identifier == node_identifier):
+                return node
+        return NodePhi()
+    
+    def reset(self):
+        self._reset_all_edge_rewards()
