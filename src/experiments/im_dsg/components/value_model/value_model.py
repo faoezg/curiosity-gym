@@ -18,11 +18,14 @@ class ValueModel():
     def calc_extrinsic_reward(self, state: np.ndarray, action: Action | int):
         state_tensor = self._to_tensor(state)
         action_tensor = self._to_tensor(action)
-
+        self.value_network.eval()
         extrinsic_reward = self.value_network(state_tensor, action_tensor)
+        self.value_network.train()
         return extrinsic_reward
 
-    def train_network(self, true_reward: float, predicted_reward: torch.Tensor):
+    def train_network(self, true_reward: float, state: np.ndarray, action: Action | int):
+        predicted_reward = self.calc_extrinsic_reward(state, action)
+
         true_reward_tensor = self._to_tensor(true_reward)
         loss = nn.functional.mse_loss(true_reward_tensor, predicted_reward, reduction="none")
         self.optimizer.zero_grad()

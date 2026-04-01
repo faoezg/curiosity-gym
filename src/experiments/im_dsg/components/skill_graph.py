@@ -137,7 +137,7 @@ class SkillGraph():
     
     
     def _calc_utility_of_state(self, state: np.ndarray, action: Action | int) -> float:
-        r_novelty = self.coin_flip_model.calc_intrinsic_reward(state, action)
+        r_novelty = self.coin_flip_model.calc_intrinsic_reward(state, action) # this also trains the cfn
         extrinsic_reward = self.value_model.calc_extrinsic_reward(state, action)
         return extrinsic_reward + self.intrinsic_reward_scalar * r_novelty
     
