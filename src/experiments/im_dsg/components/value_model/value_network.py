@@ -9,12 +9,13 @@ class ValueNetwork(nn.Module):
         super().__init__()
         self.state_dim = state_dim
         self.hidden_dim = hidden_dim
-        self.output_dim = 1
+        self.output_dim = 1 # action_dim
         self.network = self._init_network()
 
     def _init_network(self):
+        input_dim = self.state_dim + self.output_dim 
         return nn.Sequential(
-            nn.Linear(self.state_dim, self.hidden_dim),
+            nn.Linear(input_dim, self.hidden_dim),
             nn.ReLU(),
             nn.Linear(self.hidden_dim, self.hidden_dim),
             nn.ReLU(),

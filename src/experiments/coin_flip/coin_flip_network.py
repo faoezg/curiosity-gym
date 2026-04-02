@@ -23,8 +23,6 @@ class CoinFlipNetwork(nn.Module):
         self.d_dim = d_dim
         self.coin_flip_predictor = self._init_flip_network(state_dim, hidden_dim, d_dim)
         self.frozen_prior_network = self._init_frozen_prior_network(state_dim, hidden_dim, d_dim)
-        self.register_buffer("prior_mean", torch.zeros(1, d_dim))
-        self.register_buffer("prior_var", 0.002 * torch.ones(1, d_dim)) # bad if actually zero as we divide by this
     
     def _init_flip_network(self, state_dim: int, hidden_dim: int, d_dim: int):
         return nn.Sequential(
@@ -40,6 +38,7 @@ class CoinFlipNetwork(nn.Module):
     def _init_frozen_prior_network(self, state_dim: int, hidden_dim: int, d_dim: int):
         prior_net = self._init_flip_network(state_dim, hidden_dim, d_dim)
         for param in prior_net.parameters():
+            nn.init.normal_(param, mean=0, std=0.01)
             param.requires_grad = False
         
         return prior_net
@@ -50,10 +49,13 @@ class CoinFlipNetwork(nn.Module):
 
         with torch.no_grad():
             coin_flip_priors = self.frozen_prior_network(state)
-            coin_flip_priors = (coin_flip_priors - self.prior_mean) / torch.sqrt(self.prior_var + 1e-6) # type: ignore
 
         final_coin_flip_preds = coin_flip_preds + coin_flip_priors
 
-        one_over_counts = torch.mean(final_coin_flip_preds ** 2, dim=1, keepdim=True) ** 0.5 # inverse of pseudo-count
+        dim = 1 # with batch dim
+        if (final_coin_flip_preds.ndim == 1):
+            dim = 0 # no batch dim
+
+        one_over_counts = torch.mean(final_coin_flip_preds ** 2, dim=dim, keepdim=True) ** 0.5 # inverse of pseudo-count
 
         return coin_flip_preds, coin_flip_priors, final_coin_flip_preds, one_over_counts

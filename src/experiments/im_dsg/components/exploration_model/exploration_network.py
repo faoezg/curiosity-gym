@@ -24,6 +24,9 @@ class ExplorationNetwork(nn.Module):
         )
 
     def forward(self, state: torch.Tensor, action: torch.Tensor):
-        input_tensor = torch.concat((state, action))
+        if (state.ndim == 1): # Non-batched query
+            input_tensor = torch.concat((state, action))
+        else:
+            input_tensor = torch.concat((state, action), dim=1)
         value_pred = self.network(input_tensor) 
         return value_pred

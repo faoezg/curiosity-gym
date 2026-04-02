@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-# q-value network, basicaly DDQN conditioned on goals
+# q-value network, basicaly DQN conditioned on goals
 class QNetwork(nn.Module):
     def __init__(self,
                  state_dim: int,
@@ -25,6 +25,9 @@ class QNetwork(nn.Module):
         )
 
     def forward(self, state: torch.Tensor, goal_state: torch.Tensor, action: torch.Tensor):
-        input_tensor = torch.concat((state, goal_state, action))
+        if (state.ndim == 1): # Non-batched query
+            input_tensor = torch.concat((state, goal_state, action))
+        else:
+            input_tensor = torch.concat((state, goal_state, action), dim=1)
         value_pred = self.network(input_tensor) 
         return value_pred

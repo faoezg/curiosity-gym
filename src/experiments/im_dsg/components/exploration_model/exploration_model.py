@@ -35,11 +35,18 @@ class ExplorationModel():
         if (random.random() < self.eps):
             return random.choice(action_list)
 
-        state_tensor = self._to_tensor(state)
-        action_tensor = torch.zeros_like(state_tensor) # action dosn't matter
-        pred_q_value = self.exploration_network(state_tensor, action_tensor)
 
-        return int(pred_q_value.argmax(dim=1).detach().item())
+        state_tensor = self._to_tensor(state)
+        best_q_value = 0.0
+        best_action = 0
+        for action in action_list: # realy python?! Why is there no method for this?
+            action_tensor = self._to_tensor(action)
+            pred_q_value = self.exploration_network(state_tensor, action_tensor)
+            if (pred_q_value > best_q_value):
+                best_q_value = pred_q_value
+                best_action = action
+        
+        return best_action
 
     def store_transition(self,
                         state: np.ndarray,
@@ -61,6 +68,7 @@ class ExplorationModel():
             return 0.0
 
         samples, indices, weights = self.buffer.sample(batch_size)
+        weights_tensor = torch.from_numpy(weights)
         state_tensor_batch = torch.stack([self._to_tensor(transition.state) for transition in samples])
         action_tensor_batch = torch.stack([self._to_tensor(transition.action) for transition in samples])
         reward_tensor_batch = torch.stack([self._to_tensor(transition.reward) for transition in samples])
@@ -71,12 +79,12 @@ class ExplorationModel():
             td_target = reward_tensor_batch + self.td_target_gamma * next_state_target_pred_q
         
         state_pred_q = self.exploration_network(state_tensor_batch, action_tensor_batch)
-        loss = (weights * (state_pred_q - td_target) ** 2).mean()
+        loss = (weights_tensor * (state_pred_q - td_target) ** 2).mean()
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-        new_prios = (td_target - state_pred_q).abs().detach().numpy() + 1e-6 # non-zero needed
+        new_prios = (td_target - state_pred_q).abs().detach().squeeze(1).numpy() + 1e-6 # non-zero needed
         self.buffer.update_prioritites(indices, new_prios)
 
         self._update_target_network()
@@ -91,4 +99,6 @@ class ExplorationModel():
         self.target_network.eval()
 
     def _to_tensor(self, input: np.ndarray | Action | int | float):
+        if (not isinstance(input, np.ndarray)):
+            input = np.array(input, ndmin=1)
         return torch.tensor(input, dtype=torch.float32, device=self.device)

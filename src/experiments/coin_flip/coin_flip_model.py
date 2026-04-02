@@ -11,15 +11,15 @@ import numpy as np
 class CoinFlipModel(IntrinsicMotivationModel):
     def __init__(self,
                  state_dim: int,
-                 hidden_dim: int = 100,
-                 d_dim: int = 30,
+                 hidden_dim: int = 32,
+                 d_dim: int = 10,
                  reward_scale: float = 0.01,
                  batch_size: int = 32,
                  buffer_size: int = 64,
                  min_req_buffer_population: int = 16,
                  priority_alpha: float = 0.5,
                  update_period: int = 1,
-                 p_replace: float = 1.0,
+                 p_replace: float = 0.5,
                  device: device | str = "cuda" if torch.cuda.is_available() else "cpu"
                  ) -> None:
         self.device = device
@@ -100,7 +100,7 @@ class CoinFlipModel(IntrinsicMotivationModel):
     
     def _update_buffer_prioritise(self, one_over_counts_tensor, indicies):
         num_updates = self.num_updates[indicies]
-        one_over_counts = one_over_counts_tensor.squeeze().detach().numpy()
+        one_over_counts = one_over_counts_tensor.squeeze().cpu().detach().numpy()
         new_priorities = (self.priority_alpha / (num_updates + 1)) + (1 - self.priority_alpha) * one_over_counts
         self.buffer.update_prioritites(indicies, new_priorities)
         self.num_updates[indicies] += 1

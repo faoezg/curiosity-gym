@@ -106,4 +106,6 @@ class QModel():
         self.target_network.eval()
 
     def _to_tensor(self, input: np.ndarray | Action | int | float):
+        if (not isinstance(input, np.ndarray)):
+            input = np.array(input, ndmin=1)
         return torch.tensor(input, dtype=torch.float32, device=self.device)
