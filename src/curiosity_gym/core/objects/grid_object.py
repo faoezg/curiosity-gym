@@ -15,6 +15,7 @@ import pygame
 
 from curiosity_gym.utils.enums import Action, SimplerAction
 
+import random
 @dataclass
 class ObjectState:
     x_pos: int

@@ -62,10 +62,13 @@ class PriorityReplayBuffer():
             indicies = np.arange(len(self))
             probs = np.ones(len(self))/ len(self)
         else:
-            probs = np.array(self.priorities)
-            probs = probs ** self.alpha
-            probs /= probs.sum()
-            indicies = np.random.choice(len(self), batch_size, p=probs, replace=False)
+            try:
+                probs = np.array(self.priorities)
+                probs = probs ** self.alpha
+                probs /= probs.sum()
+                indicies = np.random.choice(len(self), batch_size, p=probs, replace=False)
+            except:
+                print("UUUUU", self.priorities)
         return indicies, probs
 
     def is_fully_populated(self) -> bool:

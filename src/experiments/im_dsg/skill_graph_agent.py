@@ -22,10 +22,10 @@ class SkillGraphAgent():
                  exploration_model: ExplorationModel,
                  q_model_batch_size: int = 64,
                  exploration_model_batch_size: int = 64,
-                 option_horizon: int = 32,
+                 option_horizon: int = 10,
                  intrinsic_reward_scalar: float = 0.01,
                  edge_weight_scalar: float = 0.1,
-                 goal_value_threshold: float = 0.8,
+                 goal_value_threshold: float = 0.0,
                  intrinsic_std_deviaton_scalar: float = 1) -> None:
         self.intrinsic_motivation_model = intrinsic_motivation_model 
         self.intrinsic_reward_scalar = intrinsic_reward_scalar
@@ -57,14 +57,19 @@ class SkillGraphAgent():
             if (isinstance(self.current_expansion_node, NodePhi)):
                 self._expand_graph()
                 continue
-            abstract_policy = self.skill_graph.get_abstract_policy() # abstract_policy is fixed per episode
+
             for _ in range(episode_steps):
+                abstract_policy = self.skill_graph.get_abstract_policy() # abstract_policy is fixed per episode
                 self._try_reaching_expansion_node(abstract_policy)
  
     def _try_reaching_expansion_node(self, abstract_policy: dict):
         start_nodes = self.skill_graph.map_state_to_nodes(self.current_state)
         has_reached_expansion_node = self.current_expansion_node.identifier == start_nodes[0].identifier
+        print("policy", abstract_policy)
         goal_node_identifier = abstract_policy[start_nodes[0].identifier]
+        print("Goal Node", goal_node_identifier, start_nodes[0].identifier)
+        for node in self.skill_graph.nodes:
+            print("Node Id: ", node.identifier)
         goal_node = self.skill_graph.get_node_by_identifier(goal_node_identifier)
 
         accumulated_reward = self._follow_edge(start_nodes[0], goal_node)
@@ -92,6 +97,7 @@ class SkillGraphAgent():
             goal_state = current_goal_node.get_goal_state()
             action = self.q_model.get_action_from_greedy_policy(self.current_state, goal_state)
             new_state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
+            print("Followed option:", Action(action))
             self.value_model.train_network(extrinsic_reward, self.current_state, action)
             self._process_q_model_transition(new_state, goal_state, action)
             self.current_state = new_state 
@@ -101,7 +107,8 @@ class SkillGraphAgent():
             if (truncated or terminated):
                 self._reset()
                 return 0.0
-
+            
+        #if (current_goal_node.is_goal_achieved(self.current_state)):
         # current_goal_node.add_terminal_state(self.current_state) # TODO is this okay??
         
         if (len(self.q_model.buffer) >= self.q_model_batch_size):
@@ -119,6 +126,7 @@ class SkillGraphAgent():
         self.q_model.store_transition(self.current_state, action, reward, next_state, goal_state) # goal-conditioned thus not the reward from env
     
     def _follow_novelty_policy(self) -> list[tuple[np.ndarray, Action | int, float, float, np.ndarray]]:
+        print("Exploring")
         trajectory = []
         step_count = 0
         done = False
@@ -134,8 +142,6 @@ class SkillGraphAgent():
             done = truncated or terminated
             step_count += 1
         
-            self._add_edge_during_exploration
-
        
         if (len(self.exploration_model.buffer) >= self.exploration_model_batch_size):
             self.exploration_model.train_network(self.exploration_model_batch_size)
@@ -161,7 +167,6 @@ class SkillGraphAgent():
     def _process_exploration_model_transition(self, next_state: np.ndarray, action: Action | int, extrinsic_reward: float, trjectory: list):
         current_state = self.current_state
         intrinsic_reward = self.intrinsic_motivation_model.calc_intrinsic_reward(current_state, action) # this also trains the cfn
-        print("Intrinsic reward: ", intrinsic_reward)
         reward = extrinsic_reward + (self.intrinsic_reward_scalar * intrinsic_reward)
         self.exploration_model.store_transition(current_state, action, reward, next_state)
         trjectory.append((self.current_state, action, extrinsic_reward, intrinsic_reward, next_state))
@@ -173,9 +178,11 @@ class SkillGraphAgent():
         best_state, best_action, best_extrinsic_reward, best_intrinsic_reward, best_next_state = trajectory[best_idx]
         self._update_intrinsic_reward_statistics(best_intrinsic_reward)
 
-        if (best_intrinsic_reward >= self.intrinisc_reward_mean + (self.intrinsic_std_deviaton_scalar * self._calc_intrinsic_std_deviation())):
+        intrisic_reward_threshold = self.intrinisc_reward_mean + (self.intrinsic_std_deviaton_scalar * self._calc_intrinsic_std_deviation())
+        if (best_intrinsic_reward >= intrisic_reward_threshold):
             new_node = Node()
             new_node.terminal_states.append(best_state)
+            print("ADD NODE: ", new_node.identifier)
             self.skill_graph.add_node(new_node)
 
             for node in self.skill_graph.nodes: # TODO should it be like this??

@@ -1,6 +1,7 @@
 import torch
 from torch import device, optim
 import numpy as np
+import random
 
 from curiosity_gym.utils.enums import Action
 from experiments.components import PriorityReplayBuffer
@@ -13,6 +14,7 @@ class QModel():
                  action_dim: int = 1,
                  hidden_dim: int = 64,
                  td_target_gamma: float = 0.001,
+                 eps: float = 0.1,
                  buffer_size: int = 64,
                  buffer_alpha: float = 0.5,
                  device: device | str = "cpu") -> None:
@@ -23,18 +25,24 @@ class QModel():
         self.optimizer = optim.Adam(params=self.q_network.parameters(), lr=0.0001)
 
         self.buffer = PriorityReplayBuffer(buffer_size, buffer_alpha)
+        self.eps = eps
     
     def get_action_from_greedy_policy(self, state: np.ndarray, goal_state: np.ndarray) -> Action | int:
+        action_list = [element.value for element in Action] # Why is there no method for this?
+        if (random.random() < self.eps):
+            return random.choice(action_list)
+
+
         state_tensor = self._to_tensor(state)
         goal_state_tensor = self._to_tensor(goal_state)
 
-        best_q_value = 0.0
+        best_q_value = -float("inf")
         best_action = 0
-        for action in [element.value for element in Action]: # realy python?! Why is there no method for this?
+        for action in action_list:
             action_tensor = self._to_tensor(action)
             pred_q_value = self.q_network(state_tensor, goal_state_tensor, action_tensor)
             if (pred_q_value > best_q_value):
-                best_q = pred_q_value
+                best_q_value = pred_q_value
                 best_action = action
         
         return best_action
@@ -75,6 +83,7 @@ class QModel():
             return 0.0
 
         samples, indices, weights = self.buffer.sample(batch_size)
+        weights_tensor = torch.from_numpy(weights)
         state_tensor_batch = torch.stack([self._to_tensor(transition.state) for transition in samples])
         action_tensor_batch = torch.stack([self._to_tensor(transition.action) for transition in samples])
         reward_tensor_batch = torch.stack([self._to_tensor(transition.reward) for transition in samples]) # type: ignore
@@ -86,12 +95,12 @@ class QModel():
             td_target = reward_tensor_batch + self.td_target_gamma * next_state_target_pred_q
         
         state_pred_q = self.q_network(state_tensor_batch, goal_tensor_batch, action_tensor_batch)
-        loss = (weights * (state_pred_q - td_target) ** 2).mean()
+        loss = (weights_tensor * (state_pred_q - td_target) ** 2).mean()
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-        new_prios = (td_target - state_pred_q).abs().detach().numpy() + 1e-6 # non-zero needed
+        new_prios = (td_target - state_pred_q).abs().detach().squeeze().numpy() + 1e-6 # non-zero needed
         self.buffer.update_prioritites(indices, new_prios)
 
         self._update_target_network()

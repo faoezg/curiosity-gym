@@ -30,9 +30,9 @@ class Node():
 
     def is_goal_achieved(self, state: np.ndarray) -> bool: # beta in the paper, the condition after which the nodes, rather the opations "goal" has been reached
         for terminal_state in self.terminal_states:
-            if (np.any(np.equal(state, terminal_state))):
+            if (np.all(np.equal(state, terminal_state))):
                 return True
         return False
     
     def get_goal_state(self) -> np.ndarray:
-       return random.choice(self.terminal_states) # TODO is this realy okay??
+        return random.choice(self.terminal_states) # TODO is this realy okay??

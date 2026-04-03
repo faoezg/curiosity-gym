@@ -37,7 +37,7 @@ class ExplorationModel():
 
 
         state_tensor = self._to_tensor(state)
-        best_q_value = 0.0
+        best_q_value = -float("inf")
         best_action = 0
         for action in action_list: # realy python?! Why is there no method for this?
             action_tensor = self._to_tensor(action)

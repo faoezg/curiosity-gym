@@ -168,13 +168,15 @@ class SkillGraph():
     
     def get_abstract_policy(self):
         q_matrix = self._solve_amdp_with_value_iteration()
+        print("Q Matrix", q_matrix)
+        print("Edges", self.adjacency_list)
 
         abstract_policy = {}
-        for node in self.nodes:
+        for idx, node in enumerate(self.nodes):
             # greedy policy, indexing q gives a node
             # togher with the iteration over all nodes we get a one-step policy for every node
             # where the action is given by the edge, that is to say, the option
-            best_option = int(q_matrix[node.identifier].argmax())
+            best_option = int(q_matrix[idx].argmax())
             abstract_policy[node.identifier] = self.nodes[best_option].identifier
         return abstract_policy
     
@@ -186,7 +188,8 @@ class SkillGraph():
         value_matrix = np.zeros(abstract_transition_matrix.shape[0])
         q_matrix = np.zeros(abstract_transition_matrix.shape)
 
-        while(not is_converged):
+        #while(not is_converged): # TODO this might have caused a value voerflow in matmul??
+        for _ in range(200):
             q_matrix = abstract_reward_matrix + (abstract_gamma * (abstract_transition_matrix @ value_matrix[:, None]))
             updated_value_matrix = q_matrix.max(axis=1)
             value_matrices_distance = np.max(np.abs(updated_value_matrix - value_matrix))
