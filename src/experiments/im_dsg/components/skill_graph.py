@@ -45,10 +45,10 @@ class SkillGraph():
         self.nodes.remove(node)
     
     def _add_edge(self, from_node_id: int, to_node_id: int):
-
         self.adjacency_list[from_node_id][to_node_id] = 0.0 # set inital transition propability
         self.edge_transition_counts[from_node_id][to_node_id] = 0 # set inital edge transition count
         self.edge_reward_matrix[from_node_id][to_node_id] =  0.0 # set inital edge reward count
+        self.update_edge(from_node_id, to_node_id, 0)
     
     def remove_edge(self, from_node_id: int, to_node_id: int):
         self.adjacency_list[from_node_id].pop(to_node_id)
@@ -168,8 +168,6 @@ class SkillGraph():
     
     def get_abstract_policy(self):
         q_matrix = self._solve_amdp_with_value_iteration()
-        print("Q Matrix", q_matrix)
-        print("Edges", self.adjacency_list)
 
         abstract_policy = {}
         for idx, node in enumerate(self.nodes):
@@ -183,7 +181,7 @@ class SkillGraph():
     def _solve_amdp_with_value_iteration(self):
         CONVERGENCE_THRESHOLD = 0.001
         is_converged = False
-        abstract_transition_matrix, abstract_reward_matrix, abstract_gamma = self._build_abstract_mdp()
+        abstract_reward_matrix, abstract_transition_matrix, abstract_gamma = self._build_abstract_mdp()
 
         value_matrix = np.zeros(abstract_transition_matrix.shape[0])
         q_matrix = np.zeros(abstract_transition_matrix.shape)
@@ -213,6 +211,8 @@ class SkillGraph():
                 reward_matrix[i,j] = self.edge_reward_matrix[i][j]
             # chance to fall of the graph then leaving a certain node_i
             chance_to_fall_of_the_graph_coming_from_node = (1.0 - transition_matrix[i, :].sum())
+
+            # TODO why should this be here? This allows the policy to point towards the node phi...
             transition_matrix[i, -1] = max(0.0, chance_to_fall_of_the_graph_coming_from_node)
 
         gamma = transition_matrix[:, -1].sum() / node_count # TODO not sure about this one chief

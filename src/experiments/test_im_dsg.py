@@ -1,4 +1,5 @@
 import torch
+import gymnasium as gym
 
 from experiments.im_dsg import SkillGraphAgent, ValueModel, QModel, ExplorationModel
 from experiments.coin_flip import CoinFlipModel
@@ -11,9 +12,9 @@ TRAINING_STEPS = 500
 EVAL_EPISODES = 3
 
 pov = "local_2"
-render_mode = "human" 
+render_mode = "rgb_array" 
 env = SparseEnv(agentPOV=pov,render_mode=render_mode)
-
+vide_env = env = gym.wrappers.RecordVideo(env, f"videos/im_dsg")
 state_dim = env.observation_space.shape[0] # type: ignore
 value_model = ValueModel(state_dim=state_dim)
 q_model = QModel(state_dim=state_dim)

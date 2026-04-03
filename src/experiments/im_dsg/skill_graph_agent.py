@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 from .components.node import Node
 from .components.node_phi import NodePhi
@@ -20,18 +21,20 @@ class SkillGraphAgent():
                  value_model: ValueModel,
                  q_model: QModel,
                  exploration_model: ExplorationModel,
-                 q_model_batch_size: int = 64,
-                 exploration_model_batch_size: int = 64,
+                 q_model_batch_size: int = 10,
+                 exploration_model_batch_size: int = 32,
                  option_horizon: int = 10,
                  intrinsic_reward_scalar: float = 0.01,
                  edge_weight_scalar: float = 0.1,
                  goal_value_threshold: float = 0.0,
-                 intrinsic_std_deviaton_scalar: float = 1) -> None:
+                 intrinsic_std_deviaton_scalar: float = 1,
+                 hindsight_k: int = 4) -> None:
         self.intrinsic_motivation_model = intrinsic_motivation_model 
         self.intrinsic_reward_scalar = intrinsic_reward_scalar
         self.value_model = value_model
         self.q_model = q_model
         self.q_model_batch_size = q_model_batch_size
+        self.hindsight_k = hindsight_k
         self.exploration_model = exploration_model
         self.exploration_model_batch_size = exploration_model_batch_size
         self.option_horizon = option_horizon
@@ -52,13 +55,15 @@ class SkillGraphAgent():
         self.intrinsic_reward_count = 0
    
     def run_agent(self, episodes: int, episode_steps: int):
-        for _ in range(episodes):
+        for i in range(episodes):
+            print("Start episode: ", i)
             self.current_expansion_node = self.skill_graph.calc_expansion_node(self.current_state, 0) # inital action does not matter
             if (isinstance(self.current_expansion_node, NodePhi)):
                 self._expand_graph()
                 continue
 
-            for _ in range(episode_steps):
+            for j in range(episode_steps):
+                print("Start Episode step", j)
                 abstract_policy = self.skill_graph.get_abstract_policy() # abstract_policy is fixed per episode
                 self._try_reaching_expansion_node(abstract_policy)
  
@@ -79,11 +84,15 @@ class SkillGraphAgent():
         if (has_reached_expansion_node):
             accumulated_reward += 1
             self._expand_graph()
-        self.skill_graph.update_edge(start_nodes[0].identifier, nodes_after_option_execution[0].identifier, accumulated_reward)
+
+        if (not isinstance(start_nodes[0], NodePhi)):
+            self.skill_graph.update_edge(start_nodes[0].identifier, nodes_after_option_execution[0].identifier, accumulated_reward)
 
     def _expand_graph(self):
+        print("Expanding graph")
         trajectory = self._follow_novelty_policy()
         self._add_new_node_from_trajectory_to_graph(trajectory)
+        print("Done expaning the graph")
 
     def _follow_edge(self, start_node: Node, goal_node: Node) -> float:
         accumulated_reward = 0.0
@@ -91,7 +100,7 @@ class SkillGraphAgent():
         current_goal_node = goal_node
 
         while (step_count < self.option_horizon and not current_goal_node.is_goal_achieved(self.current_state)):
-            if (isinstance(start_node, NodePhi)):
+            if (isinstance(start_node, NodePhi) or isinstance(goal_node, NodePhi)): # TODO this shouldn't be needed?
                 current_goal_node = self._get_closest_goal_to_current_state() # "shortest path back onto the graph"
 
             goal_state = current_goal_node.get_goal_state()
@@ -99,21 +108,28 @@ class SkillGraphAgent():
             new_state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
             print("Followed option:", Action(action))
             self.value_model.train_network(extrinsic_reward, self.current_state, action)
+            print("Trained value model")
             self._process_q_model_transition(new_state, goal_state, action)
+            print("Procced Q transition")
             self.current_state = new_state 
             accumulated_reward += extrinsic_reward
             step_count += 1
 
             if (truncated or terminated):
+                print("Reseting")
                 self._reset()
                 return 0.0
             
         #if (current_goal_node.is_goal_achieved(self.current_state)):
-        # current_goal_node.add_terminal_state(self.current_state) # TODO is this okay??
+        print("Adding terminal state to goalnode")
+        current_goal_node.add_terminal_state(self.current_state) # TODO is this okay??
         
         if (len(self.q_model.buffer) >= self.q_model_batch_size):
+            self._apply_hindsight_replay_to_q_model_buffer()
+            print("training q model")
             self.q_model.train_network(self.q_model_batch_size)
 
+        print("finished following edge")
         return accumulated_reward
     
     def _is_goal_met(self, current_state: np.ndarray, goal_state: np.ndarray):
@@ -125,6 +141,16 @@ class SkillGraphAgent():
             reward = 1.0
         self.q_model.store_transition(self.current_state, action, reward, next_state, goal_state) # goal-conditioned thus not the reward from env
     
+    def _apply_hindsight_replay_to_q_model_buffer(self):
+        transitions = list(self.q_model.buffer.buffer)[-self.option_horizon:]
+        for idx, transition in enumerate(transitions):
+            future_indicies = list(range(idx+1, len(transitions)))
+            selected_future_idx = random.choices(future_indicies, k=min(self.hindsight_k, len(future_indicies))) # TODO this will blow up if k > len(transitions), but what ever
+
+            for future_idx in selected_future_idx:
+                hindsight_goal_state = transitions[future_idx].goal_state # type: ignore
+                self._process_q_model_transition(transition.next_state, hindsight_goal_state, transition.action)
+    
     def _follow_novelty_policy(self) -> list[tuple[np.ndarray, Action | int, float, float, np.ndarray]]:
         print("Exploring")
         trajectory = []
@@ -134,7 +160,9 @@ class SkillGraphAgent():
         while (step_count < self.option_horizon and not done): # TODO is the option_horizon okay here? It might be!
             action = self.exploration_model.get_action_from_greedy_policy(self.current_state)
             new_state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
+            print("training value model (exploring)")
             self.value_model.train_network(extrinsic_reward, self.current_state, action)
+            print("procces exploration transition")
             self._process_exploration_model_transition(new_state, action, extrinsic_reward, trajectory)
             self._add_edge_during_exploration(self.current_state, new_state, extrinsic_reward)
 
@@ -147,9 +175,11 @@ class SkillGraphAgent():
             self.exploration_model.train_network(self.exploration_model_batch_size)
 
         if (done):
+            print("Resting (explorationg)")
             self._reset()
             return trajectory
         
+        print("Done exploring")
         return trajectory
     
     # TODO should this be a thing?
@@ -186,7 +216,11 @@ class SkillGraphAgent():
             self.skill_graph.add_node(new_node)
 
             for node in self.skill_graph.nodes: # TODO should it be like this??
-                self.skill_graph.add_edge(node.identifier, new_node.identifier, self.current_state)
+                if (not isinstance(node, NodePhi)):
+                    self.skill_graph.add_edge(node.identifier, new_node.identifier, self.current_state)
+                    # this makes the graph bidirectional though
+                    #self.skill_graph.add_edge(new_node.identifier, node.identifier, self.current_state)
+        print("Done handling trajectory")
     
     def _update_intrinsic_reward_statistics(self, intrinsic_reward: float) -> None:
         self.intrinsic_reward_count += 1
