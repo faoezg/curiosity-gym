@@ -314,7 +314,10 @@ class GridEngine(gym.Env, ABC):
                 state
             ), f"""Position [{x},{y}] of object with type {self.get_object_ids()[ob.identifier]}
             is invalid for grid with size ({self.env_settings.width}, {self.env_settings.height})"""
-            state[x + y * self.env_settings.width] = ob.get_identity()
+            if (self.env_settings.use_globaly_unique_id):
+                state[x + y * self.env_settings.width] = ob.get_unique_identity()
+            else:
+                state[x + y * self.env_settings.width] = ob.get_identity()
         return state
 
     def get_raw_state(self) -> list[ObjectState]:
@@ -438,7 +441,6 @@ class GridEngine(gym.Env, ABC):
         offset = 3 # reduce chance for (id + colour) to map to same int
         simplified_state = np.zeros(len(raw_obs), dtype=int)
 
-        # This works as long as (id, colour) from a primary key regarding objects
         for idx, cell in enumerate(raw_obs):
             simplified_state[idx] = (cell[0] * offset) + cell[1] + cell[2]
 

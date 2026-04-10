@@ -33,6 +33,7 @@ class EnvironmentSettings:
     reward_range: tuple[int, int] = (0, 1)
     simple_actions: bool = False
     simple_obs: bool = True
+    use_globaly_unique_id: bool = True
 
 
 @dataclass
@@ -108,4 +109,3 @@ class EnvironmentObjects:
         return np.concatenate(
             (np.array([self.target]), self.other, np.array([self.agent]))
         )
-

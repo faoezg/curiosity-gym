@@ -30,6 +30,10 @@ class Node():
 
     def is_goal_achieved(self, state: np.ndarray) -> bool: # beta in the paper, the condition after which the nodes, rather the opations "goal" has been reached
         for terminal_state in self.terminal_states:
+            # TODO somewhat close fuzzy comparison. This is based on the simple state representation
+            # with this tolarence it should only help with agent rotation
+            # if (np.allclose(state, terminal_state, atol=3, rtol=0)):
+                # return True
             if (np.all(np.equal(state, terminal_state))):
                 return True
         return False

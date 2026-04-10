@@ -15,7 +15,6 @@ import pygame
 
 from curiosity_gym.utils.enums import Action, SimplerAction
 
-import random
 @dataclass
 class ObjectState:
     x_pos: int
@@ -51,7 +50,12 @@ class GridObject(ABC):
     """Unique id number for each subclass."""
     id_map = {}
     """Dictionary for all ids and their corresponding subclasses."""
+
     _next_id = 1
+    instance_map = []
+    _next_instance_id = 1
+
+    uid = None
 
     def __init__(
         self, position: tuple[int, int], color: int = 0, state: int = 0
@@ -68,6 +72,13 @@ class GridObject(ABC):
         cls.identifier = GridObject._next_id
         GridObject.id_map[GridObject._next_id] = cls
         GridObject._next_id += 1
+
+    def __new__(cls, *args, **kwargs) -> Self:
+        obj = super().__new__(cls)
+        obj.uid = GridObject._next_instance_id
+        obj.instance_map.append(obj.uid)
+        GridObject._next_instance_id += 100
+        return obj
 
     @abstractmethod
     def render(self, canvas: pygame.Surface, pixelsquare: float) -> None:
@@ -91,7 +102,19 @@ class GridObject(ABC):
         tuple[int | None, int, int]
             A tuple consisting of :attr:`~identifier`, :attr:`~color` and :attr:`~state`.
         """
-        return (self.identifier, self.color, self.state)
+
+        return (self.identifier, self.color, self.state) # TODO Keep unique uid for every obj? this combats state aliasing
+
+    def get_unique_identity(self) -> tuple[int | None, int, int]:
+        """Return a tuple that identifies the grid object and its state in the enviroment.
+
+        Returns
+        -------
+        tuple[int | None, int, int]
+            A tuple consisting of :attr:`~uid`, :attr:`~color` and :attr:`~state`.
+        """
+
+        return (self.uid, self.color, self.state) # TODO Keep unique uid for every obj? this combats state aliasing
 
     def interact(self, agent: Self) -> None:
         """Interact with agent. \n

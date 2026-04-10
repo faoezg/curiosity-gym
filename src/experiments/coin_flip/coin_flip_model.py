@@ -42,28 +42,31 @@ class CoinFlipModel(IntrinsicMotivationModel):
     def _np_array_to_tensor(self, state: np.ndarray):
         return torch.tensor(state, dtype=torch.float32, device=self.device)
 
-    def calc_intrinsic_reward(self, state: np.ndarray, action: Action | int):
+    def calc_intrinsic_reward(self, state: np.ndarray, action: Action | int, with_training: bool = True):
         state_tensor = self._np_array_to_tensor(state)
         rademacher_sample = self.rademacher_generator()
 
-        prev_state = self.prev_state
-        if not prev_state is None:
-            transition = CFNTransition(
-                state=prev_state,
-                next_state=state,
-                reward=0.0,
-                coin_flip_vector=rademacher_sample,
-                action=action,
-                priority=1.0
-            )
-            self.buffer.add(transition)
-        
-        self.prev_state = state
-        self.step_count += 1
-        isBufferPopulatedEnough = len(self.buffer) >= self.min_req_buffer_population
-        if (isBufferPopulatedEnough and len(self.buffer) >= self.min_req_buffer_population) and self.step_count % self.update_period == 0:
-            self._train_network()
-        
+        if (with_training):
+            prev_state = self.prev_state
+            if not prev_state is None:
+                transition = CFNTransition(
+                    state=prev_state,
+                    next_state=state,
+                    reward=0.0,
+                    coin_flip_vector=rademacher_sample,
+                    action=action,
+                    priority=1.0
+                )
+                self.buffer.add(transition)
+            
+            self.prev_state = state
+            self.step_count += 1
+            isBufferPopulatedEnough = len(self.buffer) >= self.min_req_buffer_population
+            if (isBufferPopulatedEnough and len(self.buffer) >= self.min_req_buffer_population) and self.step_count % self.update_period == 0:
+                self._train_network()
+        else:
+            isBufferPopulatedEnough = len(self.buffer) >= self.min_req_buffer_population
+
         intrinsic_reward = 0.0
         if (isBufferPopulatedEnough):
             with torch.no_grad():

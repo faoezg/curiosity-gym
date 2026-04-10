@@ -115,8 +115,8 @@ class AgentPOV(ABC):
 
         while (x, y) != (pos_cell[0], pos_cell[1]):
             if (
-                state[x + y * self.width][0] == Wall.identifier
-                or state[x + y * self.width][0] == Door.identifier
+                state[x + y * self.width][0] in Wall.instance_map
+                or state[x + y * self.width][0] in Door.instance_map
                 and state[x + y * self.width][2] == 2
             ):
                 return False

@@ -61,12 +61,13 @@ class QModel():
         self.q_network.train()
         return extrinsic_reward
 
-    def store_transition(self,
+    def handle_transition(self,
                         state: np.ndarray,
                         action: Action | int,
                         reward: float,
                         next_state: np.ndarray,
                         goal_state: np.ndarray,
+                        done: bool,
                         priority: float = 1.0):
         transition = SGDTransition(
             state,
@@ -83,7 +84,7 @@ class QModel():
             return 0.0
 
         samples, indices, weights = self.buffer.sample(batch_size)
-        weights_tensor = torch.from_numpy(weights)
+        weights_tensor = self._to_tensor(weights)
         state_tensor_batch = torch.stack([self._to_tensor(transition.state) for transition in samples])
         action_tensor_batch = torch.stack([self._to_tensor(transition.action) for transition in samples])
         reward_tensor_batch = torch.stack([self._to_tensor(transition.reward) for transition in samples]) # type: ignore
@@ -100,7 +101,7 @@ class QModel():
         loss.backward()
         self.optimizer.step()
 
-        new_prios = (td_target - state_pred_q).abs().detach().squeeze().numpy() + 1e-6 # non-zero needed
+        new_prios = (td_target - state_pred_q).abs().detach().cpu().squeeze().numpy() + 1e-6 # non-zero needed
         self.buffer.update_prioritites(indices, new_prios)
 
         self._update_target_network()

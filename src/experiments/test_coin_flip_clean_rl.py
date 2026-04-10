@@ -17,7 +17,7 @@ EVAL_EPISODES = 5
 print("Running own models on: ", DEVICE)
 
 def train_clean_rl_model() -> None:
-    env_name = "DistractiveEnv"
+    env_name = "MultitaskEnv"
     args = Args(
         env_name,
         env_id=env_name+"-CoinFlip",

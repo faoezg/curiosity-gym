@@ -23,6 +23,6 @@ class Rotation(Enum):
     """Possible rotations in a curiosity-gym grid environment."""
 
     RIGHT = 0
-    UP = 1
-    LEFT = 2
-    DOWN = 3
+    UP = 50
+    LEFT = -50
+    DOWN = 100

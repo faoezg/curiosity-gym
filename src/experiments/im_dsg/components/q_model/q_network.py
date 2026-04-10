@@ -21,6 +21,10 @@ class QNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(self.hidden_dim, self.hidden_dim),
             nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            nn.ReLU(),
             nn.Linear(self.hidden_dim, self.output_dim)
         )
 

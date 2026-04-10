@@ -52,9 +52,9 @@ class DistractiveEnv(GridEngine):
         render_mode: str | None = None,
         window_width: int = 1200,
         simple_actions: bool = False,
-        simple_obs: bool = True
+        simple_obs: bool = True,
+        use_globaly_unique_id: bool = True
     ) -> None:
-        print("RENDERMODE", render_mode)
         env_settings = EnvironmentSettings(
             min_steps=40,
             max_steps=50,
@@ -62,7 +62,8 @@ class DistractiveEnv(GridEngine):
             height=7,
             reward_range=(0, 1),
             simple_actions=simple_actions,
-            simple_obs=simple_obs
+            simple_obs=simple_obs,
+            use_globaly_unique_id=use_globaly_unique_id 
         )
 
         render_settings = RenderSettings(
