@@ -12,8 +12,7 @@ import torch
 
 SB3_DEVICE = "cpu"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-TRAINING_STEPS = 50_000
-EVAL_EPISODES = 5
+TRAINING_EPISODES = 10
 print("Running own models on: ", DEVICE)
 
 def train_clean_rl_model() -> None:
@@ -22,7 +21,7 @@ def train_clean_rl_model() -> None:
         env_name,
         env_id=env_name+"-Icm",
         num_envs=1,
-        num_steps=TRAINING_STEPS,
+        num_steps=TRAINING_EPISODES,
         capture_video=True
     )
     run_clean_rl_ppo_model(args)

@@ -15,8 +15,9 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         byol_explore_model: ByolExploreModel,
         device: device,
         intrinsic_reset_threshold: float = 0.5,
+        allow_global_state_reset: bool = False,
     ):
-        super().__init__(env, byol_explore_model, device, intrinsic_reset_threshold)
+        super().__init__(env, byol_explore_model, device, intrinsic_reset_threshold, allow_global_state_reset)
         self.intrinsic_model: ByolExploreModel = self.intrinsic_model
         self.buffer = ReplayBuffer(size=self.intrinsic_model.byol_network.time_horizon + 1)
 

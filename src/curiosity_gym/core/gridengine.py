@@ -252,6 +252,16 @@ class GridEngine(gym.Env, ABC):
         if self.render_settings.render_mode == "rgb_array":
             return self._render_frame()
         return None
+    
+    def print_inital_env_state_as_pdf(self):
+        self.reset()
+        rgb = self.render()
+        plt.figure(figsize=(rgb.shape[1] / 100, rgb.shape[0] / 100), dpi=100) # type: ignore
+        plt.axis('off')
+        plt.imshow(rgb) # type: ignore
+        plt.tight_layout(pad=0)
+        plt.savefig(f"{self.name}_init_state.pdf", format="pdf", bbox_inches='tight', pad_inches=0)
+        plt.close()
 
     def close(self) -> None:
         """Clean up the environment.\n
@@ -337,14 +347,14 @@ class GridEngine(gym.Env, ABC):
             is invalid for grid with size ({self.env_settings.width}, {self.env_settings.height})"""
             state.append(ob.get_object_state()) 
         return state
-    
-    def heatmap(self) -> Figure | None:
+
+    def heatmap_from_data(self, raw_data: dict[tuple[int,int], int]| dict[tuple[int,int], float]) -> Figure | None:
         """Display heatmap of position counts of the agent."""
         max_col = max(key[0] for key in self.pos_count.keys())
         max_row = max(key[1] for key in self.pos_count.keys())
-        data = pd.DataFrame(0, index=range(max_row + 1), columns=range(max_col + 1))
+        data = pd.DataFrame(0, index=range(max_row + 1), columns=range(max_col + 1), dtype="float")
 
-        for (col, row), value in self.pos_count.items():
+        for (col, row), value in raw_data.items():
             if value == 0:
                 value = None
             data.iat[row, col] = value
@@ -352,6 +362,10 @@ class GridEngine(gym.Env, ABC):
         plt.figure(figsize=(self.env_settings.width, self.env_settings.height))
         axes = sns.heatmap(data, cbar=True, cmap="Greens")
         return axes.get_figure()
+    
+    def heatmap(self) -> Figure | None:
+        """Display heatmap of position counts of the agent."""
+        return self.heatmap_from_data(self.pos_count)
 
     def init_render(self) -> None:
         """Initialise render objects."""
@@ -416,7 +430,7 @@ class GridEngine(gym.Env, ABC):
                 return True
         return False
 
-    def _check_walkable(self, position: np.ndarray) -> bool:
+    def _check_walkable(self, position: np.ndarray | tuple[int, int]) -> bool:
         inbounds_horizontal = 0 < position[0] < self.env_settings.width
         inbounds_vertical = 0 < position[1] < self.env_settings.height
 
@@ -436,19 +450,32 @@ class GridEngine(gym.Env, ABC):
         if (self.env_settings.simple_obs):
             obs = self._simplifiey_obs(obs)
         return obs
+    
+    def get_obs_by_state_and_agent_pos(self, state: np.ndarray, agent_pos: tuple[int,int]) -> np.ndarray:
+        actual_agent_pos = self.objects.agent.position
+        self.objects.agent.position = np.array(agent_pos)
+        obs = self.agent_pov.transform_obs(state, self.objects.agent)
+        if (self.env_settings.simple_obs):
+            obs = self._simplifiey_obs(obs)
+        self.objects.agent.position = actual_agent_pos
+        return obs
+    
+    def get_every_wakable_cor(self):
+        walkable_cor = []
+        for x in range(self.env_settings.width):
+            for y in range(self.env_settings.height):
+                cor = (x,y)
+                if (self._check_walkable(cor)):
+                    walkable_cor.append(cor)
+        return walkable_cor
 
     def _simplifiey_obs(self, raw_obs: np.ndarray) -> np.ndarray:
-        offset = 3 # reduce chance for (id + colour) to map to same int
         simplified_state = np.zeros(len(raw_obs), dtype=int)
 
         for idx, cell in enumerate(raw_obs):
-            simplified_state[idx] = (cell[0] * offset) + cell[1] + cell[2]
+            simplified_state[idx] = cell[0] + cell[1] + cell[2]
 
         return simplified_state
-
-
-
-
 
     def _get_terminated(self) -> bool:
         return self._check_harmful(self.objects.agent.position) or self.check_task()

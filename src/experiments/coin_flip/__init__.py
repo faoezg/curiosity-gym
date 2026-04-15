@@ -28,3 +28,20 @@ gym.register(
         "base_env_id":"MultitaskEnv"
     }
 )
+
+gym.register(
+    id="DetachmentEnv-CoinFlip",
+    entry_point="experiments.coin_flip.coin_flip_factory:make_coin_flip_env",
+    kwargs={
+        "base_env_id":"DetachmentEnv",
+    }
+)
+
+gym.register(
+    id="DerailmentEnv-CoinFlip",
+    entry_point="experiments.coin_flip.coin_flip_factory:make_coin_flip_env",
+    kwargs={
+        "base_env_id":"DerailmentEnv",
+        "max_episodes": 500 
+    }
+)

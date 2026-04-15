@@ -14,7 +14,10 @@ def make_icm_env(
     latent_rep_dim: int = 32,
     hidden_dim: int = 64,
     intrinsic_reset_threshold: float = 0.5,
-    render_mode: str | None = None
+    allow_global_state_reset: bool = False,
+    render_mode: str | None = None,
+    max_episodes: int = 1,
+    max_training_steps: int = 500
 ) -> gym.Env:
     raw_env: GridEngine = gym.make(base_env_id, render_mode=render_mode, agentPOV="local_2") # type: ignore
 
@@ -28,4 +31,10 @@ def make_icm_env(
             eta=0.03,
         )
 
-    return ICMCuriosityWrapper(device, raw_env, icm, 0.1)
+    return ICMCuriosityWrapper(device,
+                               raw_env,
+                               icm,
+                               intrinsic_reset_threshold,
+                               allow_global_state_reset,
+                               max_training_steps=max_training_steps,
+                               max_episodes=max_episodes)
