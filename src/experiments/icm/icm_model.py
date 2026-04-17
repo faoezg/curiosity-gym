@@ -44,14 +44,13 @@ class ICMModel(IntrinsicMotivationModel):
 
         self.icm_network.eval() # no gradiants
         with torch.no_grad():
-         state_tensor = torch.tensor(state, dtype=torch.float32, device=self.icm_network.device).flatten(0).unsqueeze(0)
-         next_state_tensor = torch.tensor(next_state, dtype=torch.float32, device=self.icm_network.device).flatten(0).unsqueeze(0)
-         action_tensor = torch.tensor([action], dtype=torch.long, device=self.icm_network.device)
+            state_tensor = torch.tensor(state, dtype=torch.float32, device=self.icm_network.device).flatten(0).unsqueeze(0)
+            next_state_tensor = torch.tensor(next_state, dtype=torch.float32, device=self.icm_network.device).flatten(0).unsqueeze(0)
+            action_tensor = torch.tensor([action], dtype=torch.long, device=self.icm_network.device)
+            _, phi_next, forward_pred, _ = self.icm_network.forward(state_tensor, next_state_tensor, action_tensor)
+            intrinsic_reward = self.calc_forward_loss(forward_pred, phi_next).item()
 
-         _, phi_next, forward_pred, _ = self.icm_network.forward(state_tensor, next_state_tensor, action_tensor)
-
-         intrinsic_reward = self.calc_forward_loss(forward_pred, phi_next).item()
-         return self.icm_network.eta * intrinsic_reward
+        return self.icm_network.eta * intrinsic_reward
     
     def calc_forward_loss(self, forward_pred: torch.Tensor, next_state: torch.Tensor) -> torch.Tensor:
         return 0.5 * F.mse_loss(forward_pred, next_state, reduction="mean")

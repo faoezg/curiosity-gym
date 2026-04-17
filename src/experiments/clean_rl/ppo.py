@@ -83,7 +83,7 @@ def make_env(env_id, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
             env = gym.make(env_id, render_mode="rgb_array")
-            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}", episode_trigger=lambda x: x % 10 == 0)
         else:
             env = gym.make(env_id)
         
@@ -100,16 +100,17 @@ def make_env(env_id, idx, capture_video, run_name):
 def make_env_from_env(env, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
-            new_env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+            new_env = gym.wrappers.RecordVideo(env, f"videos/{run_name}", episode_trigger=lambda x: x % 10 == 0)
         else:
-            new_env = gym.wrappers.RecordEpisodeStatistics(env)
+            new_env = env
 
         if isinstance(new_env.observation_space, gym.spaces.Box):
             new_env = gym.wrappers.TransformObservation(
                 new_env,
-                lambda obs: np.asarray(obs, dtype=np.float32),
+                lambda obs: np.asarray(obs, dtype=np.int64),
             )
 
+        new_env = gym.wrappers.RecordEpisodeStatistics(new_env)
         return new_env
 
     return thunk

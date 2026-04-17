@@ -17,18 +17,26 @@ def make_icm_env(
     allow_global_state_reset: bool = False,
     render_mode: str | None = None,
     max_episodes: int = 1,
-    max_training_steps: int = 500
+    max_training_steps: int = 500,
+    use_simple_obs: bool = True,
+    use_globaly_unique_id: bool = True
 ) -> gym.Env:
-    raw_env: GridEngine = gym.make(base_env_id, render_mode=render_mode, agentPOV="local_2") # type: ignore
+    raw_env: GridEngine = gym.make(base_env_id,
+                                   render_mode=render_mode,
+                                   agentPOV=base_env_pov,
+                                   simple_obs=use_simple_obs,
+                                   use_globaly_unique_id=use_globaly_unique_id
+                                   ) # type: ignore
 
     icm = ICMModel(
             device = device,
             state_dim=raw_env.observation_space.shape[0], # type: ignore
             action_dim=raw_env.action_space.n, # type: ignore
-            latent_rep_dim=32,
-            hidden_dim=64,
+            latent_rep_dim=128,
+            hidden_dim=256,
             beta=.2,
-            eta=0.03,
+            eta=0.3,
+            icm_lr=5e-6
         )
 
     return ICMCuriosityWrapper(device,

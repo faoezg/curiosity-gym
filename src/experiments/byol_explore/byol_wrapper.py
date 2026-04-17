@@ -24,7 +24,7 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
     def step(self, action):
         state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action)
 
-        transition = Transition(self.prev_state, action, state) # type: ignore
+        transition = Transition(self.prev_state, action, extrinsic_reward, state) # type: ignore
         self.buffer.add(transition)
 
         if self.buffer.is_fully_populated():

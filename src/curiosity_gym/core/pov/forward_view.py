@@ -4,6 +4,8 @@ from curiosity_gym.core.pov import AgentPOV
 import numpy as np
 from gymnasium import spaces
 from curiosity_gym.core.objects import Agent
+from curiosity_gym.core.objects import Agent, GridObject
+from curiosity_gym.utils.constants import IX_TO_COLOR
 
 class ForwardView(AgentPOV):
     """Agent point-of-view observing grid cells in front of the agent.
@@ -34,14 +36,20 @@ class ForwardView(AgentPOV):
         pov_width: int,
         env_size: tuple[int, int],
         xray: bool = False,
-        simple_observation_space: bool = True
+        simple_observation_space: bool = True,
+        individual_obj_ids: bool = True
     ) -> None:
         self.pov_width = pov_width
         self.pov_length = pov_length
         self.xray = xray
         action_space = spaces.Discrete(4)
         number_of_cells = (pov_length + 1) * pov_width
-        observation_space_shape = (number_of_cells,) if simple_observation_space else (number_of_cells,3)
+        if (not individual_obj_ids):
+            obj_id_count = len(GridObject.id_map.keys())
+        else:
+            obj_id_count = GridObject._next_instance_id - 1
+        total_label_count = obj_id_count  + (len(IX_TO_COLOR.keys()) + 1) + 1 # +1 for color zero indexed and for states TODO encode obj state as well?
+        observation_space_shape = (number_of_cells * total_label_count,) if simple_observation_space else (number_of_cells,3)
         observation_space = spaces.Box(
             shape=observation_space_shape, high=10, low=0, dtype=np.int64
         )

@@ -22,7 +22,8 @@ class SimplerAction(Enum):
 class Rotation(Enum):
     """Possible rotations in a curiosity-gym grid environment."""
 
-    RIGHT = 0
+    # TODO DOCUMENT + PAPER, OR REVERT
+    RIGHT = -100
     UP = 50
     LEFT = -50
     DOWN = 100

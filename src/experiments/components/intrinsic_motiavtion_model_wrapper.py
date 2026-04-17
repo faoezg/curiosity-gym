@@ -3,8 +3,13 @@ from typing import Any
 import gymnasium as gym
 from torch import device
 import random
+import numpy as np
+import matplotlib.pyplot as plt
+
 from curiosity_gym.core.gridengine import GridEngine
 from curiosity_gym.utils.enums import Action
+from curiosity_gym.core.objects import Key
+
 
 from .intrinsic_motiavtion_model import IntrinsicMotivationModel
 
@@ -31,17 +36,12 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.max_episodes = max_episodes
         self.training_step = 0
         self.episode_count = -1 # given inital reset
+        self.absolute_episode_count = -1 
 
     def reset(self, **kwargs):
         self.training_step = 0
         self.episode_count += 1
-
-        is_trainig_done = self.episode_count >= self.max_episodes or self.training_step >= self.max_training_steps
-        if (is_trainig_done):
-            # TODO THINK ABOUT BYOL
-            # ORDER MATTRES BECOUSE OF AGENT POSITION SHIFTS...
-            self.print_intrinsic_heatmap()
-            self._save_environment_heatmaps()
+        self.absolute_episode_count += 1
 
         print("Current Episode: ", self.episode_count)
 
@@ -49,6 +49,13 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             obs, info = self.env.reset(**kwargs)
         else:
             obs, info = self.env.reset_to_specific_global_state(self.last_best_global_state, **kwargs)
+
+        is_trainig_done = self.episode_count >= self.max_episodes or self.training_step >= self.max_training_steps
+        if (is_trainig_done and self.absolute_episode_count % 20 == 0):
+            # TODO THINK ABOUT BYOL
+            # ORDER MATTERS BECOUSE OF AGENT STATE/COLOUR CHANGE ON RESET
+            self.print_intrinsic_heatmap()
+            self._save_environment_heatmaps()
         
         self.prev_state = obs
         return obs, info
@@ -84,15 +91,31 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         pass
 
     # TODO make nicer and normalize intrinsic reward for comparisons??
-    def _calc_intrinsic_reward_map(self) -> dict[tuple[int,int], float]:
+    def _calc_intrinsic_reward_map(self) -> tuple[list[dict[tuple[int,int], float]], list[int]]:
+        colours = []
+        intrinsic_maps = []
+
+        for other_obj in self.env.objects.other:
+            if (isinstance(other_obj, Key)):
+                colour = other_obj.color
+                colours.append(colour)
+
+        colours.append(self.env.objects.agent.start_color)
+        for colour in colours:
+            colour_state = self.env.get_state_with_agent_color(colour)
+            colour_intrinsic_map = self._calc_intrinsic_map(colour_state)
+            intrinsic_maps.append(colour_intrinsic_map)
+
+        return intrinsic_maps, colours
+    
+    def _calc_intrinsic_map(self, state: np.ndarray):
         intrinsic_map = {}
-        curr_global_state = self.env.get_state()
         walkable_cor = self.env.get_every_wakable_cor()
 
         action_list = [element.value for element in Action] # Why is there no method for this?
         total_reward = 0
         for cor in walkable_cor:
-            obs = self.env.get_obs_by_state_and_agent_pos(curr_global_state, cor) # type: ignore
+            obs = self.env.get_obs_by_state_and_agent_pos(state, cor) # type: ignore
             random_action = random.choice(action_list)
             intrinsic_reward = self._get_intrinsic_reward_from_model_no_training(state=obs, action=random_action)
             total_reward += intrinsic_reward
@@ -101,25 +124,42 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         if (total_reward > 0):
             for cor, value in intrinsic_map.items():
                 intrinsic_map[cor] = (value/total_reward) * 100
+        
         return intrinsic_map
-    
+
+    # TODO OH WHAT UGLY CODE!
     def print_intrinsic_heatmap(self):
-        file_path = f"{self.env.name}_episode_{self.episode_count}_intrinsic_Heatmap.png"
-        intrinsic_map = self._calc_intrinsic_reward_map()
-        figure = self.env.heatmap_from_data(intrinsic_map)
+        intrinsic_maps, colours = self._calc_intrinsic_reward_map()
+        for idx, map in enumerate(intrinsic_maps):
+            file_path = f"heatmaps/{self.env.name}_episode_{self.episode_count}_colour_{colours[idx]}_intrinsic_Heatmap.png"
+            overlay_file_path = f"heatmaps/{self.env.name}_episode_{self.episode_count}_colour_{colours[idx]}_intrinsic_Heatmap_overlay.png"
+            raw_figure = self.env.heatmap_from_data(map)
+            overlay_figure = self.env.overlay_heatmap_from_data(map)
+            if (raw_figure is not None):
+                raw_figure.savefig(file_path)
+                raw_figure.clear()
+            if (overlay_figure is not None):
+                overlay_figure.savefig(overlay_file_path)
+                overlay_figure.clear()
+            else:
+                # TODO make proper error?
+                print("Exporting Heatmaps failed, as no figure was able to be created")
+
+        plt.close()
+
+    def _save_environment_heatmaps(self) -> None:
+        file_path = f"heatmaps/{self.env.name}_episode_{self.episode_count}_Heatmap.png"
+        overlay_file_path = f"heatmaps/{self.env.name}_episode_{self.episode_count}_Heatmap_overlay.png"
+        figure = self.env.heatmap()
+        overlay_figure = self.env.overlay_heatmap()
         if (figure is not None):
             figure.savefig(file_path)
             figure.clear()
+        if (overlay_figure is not None):
+            overlay_figure.savefig(overlay_file_path)
+            overlay_figure.clear()
         else:
             # TODO make proper error?
             print("Exporting Heatmaps failed, as no figure was able to be created")
 
-    def _save_environment_heatmaps(self) -> None:
-        file_path = f"{self.env.name}_episode_{self.episode_count}_Heatmap.png"
-        figure = self.env.heatmap()
-        if (figure is not None):
-            figure.savefig(file_path)
-            figure.clear()
-        else:
-            # TODO make proper error?
-            print("Exporting Heatmaps failed, as no figure was able to be created")
+        plt.close()

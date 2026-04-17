@@ -9,6 +9,7 @@ import copy
 from abc import ABC, abstractmethod
 from typing_extensions import Self
 from dataclasses import dataclass
+import random
 
 import numpy as np
 import pygame
@@ -77,7 +78,7 @@ class GridObject(ABC):
         obj = super().__new__(cls)
         obj.uid = GridObject._next_instance_id
         obj.instance_map.append(obj.uid)
-        GridObject._next_instance_id += 100
+        GridObject._next_instance_id += 1 #* random.random()
         return obj
 
     @abstractmethod

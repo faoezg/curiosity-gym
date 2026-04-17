@@ -9,6 +9,7 @@ from experiments.experiment_setup.experiment_evaluator import ExperimentEvaluato
 from experiments.icm import ICMModel
 
 import torch
+import gymnasium as gym
 
 SB3_DEVICE = "cpu"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -16,13 +17,22 @@ TRAINING_EPISODES = 10
 print("Running own models on: ", DEVICE)
 
 def train_clean_rl_model() -> None:
-    env_name = "DistractiveEnv"
+    env_name = "DistractiveEnv-Icm"
+    env = gym.make(env_name,
+                   max_episodes=1,
+                   max_training_steps=1,
+                   base_env_pov="forward_2_3",
+                   render_mode="rgb_array",
+                   device=DEVICE)
+
     args = Args(
-        env_name,
-        env_id=env_name+"-Icm",
+        exp_name=env_name,
+        env_id=env_name,
+        env=env,
         num_envs=1,
         num_steps=TRAINING_EPISODES,
-        capture_video=True
+        capture_video=True,
+        learning_rate=0.001
     )
     run_clean_rl_ppo_model(args)
 

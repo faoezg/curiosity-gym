@@ -16,8 +16,9 @@ import numpy as np
 import pygame
 import pandas as pd
 import seaborn as sns
+import math
 
-from curiosity_gym.core.objects import GridObject, Wall, ObjectState
+from curiosity_gym.core.objects import GridObject, Wall, ObjectState, Agent
 from curiosity_gym.core.pov import AgentPOV, GlobalView, LocalView, ForwardView
 from curiosity_gym.utils.enums import Action, SimplerAction
 from curiosity_gym.utils.dataclasses import (
@@ -25,6 +26,8 @@ from curiosity_gym.utils.dataclasses import (
     RenderSettings,
     EnvironmentObjects,
 )
+from curiosity_gym.utils.utils import one_hot_encode, one_hot_encode_zero_indexed
+from curiosity_gym.utils.constants import IX_TO_COLOR
 
 # TODO validate all doc strings in project for :class:
 class GridEngine(gym.Env, ABC):
@@ -329,6 +332,39 @@ class GridEngine(gym.Env, ABC):
             else:
                 state[x + y * self.env_settings.width] = ob.get_identity()
         return state
+    
+    def get_state_with_agent_color(self, colour: int) -> np.ndarray:
+        """Get the current state of the environment.\n
+        The returned state is independent of the agent's :attr:`observation_space`.
+        And manipulates the agent to have a certain color to simulate having picked up a certian key
+        Returns
+        -------
+        state : np.ndarray
+            Current state of the environment.
+        """
+        state = np.zeros(
+            [self.env_settings.width * self.env_settings.height, 3], dtype=int
+        )
+        for ob in self.objects.get_all():
+            x, y = ob.position
+            assert x + y * self.env_settings.width < len(
+                state
+            ), f"""Position [{x},{y}] of object with type {self.get_object_ids()[ob.identifier]}
+            is invalid for grid with size ({self.env_settings.width}, {self.env_settings.height})"""
+            if (isinstance(ob, Agent)):
+                old_agent_color = ob.color
+                ob.color = colour
+                if (self.env_settings.use_globaly_unique_id):
+                    state[x + y * self.env_settings.width] = ob.get_unique_identity()
+                else:
+                    state[x + y * self.env_settings.width] = ob.get_identity()
+                ob.color = old_agent_color
+            else:
+                if (self.env_settings.use_globaly_unique_id):
+                    state[x + y * self.env_settings.width] = ob.get_unique_identity()
+                else:
+                    state[x + y * self.env_settings.width] = ob.get_identity()
+        return state
 
     def get_raw_state(self) -> list[ObjectState]:
         """Get the current state of the environment.\n
@@ -348,8 +384,24 @@ class GridEngine(gym.Env, ABC):
             state.append(ob.get_object_state()) 
         return state
 
+    def overlay_heatmap_from_data(self, raw_data: dict[tuple[int,int], int]| dict[tuple[int,int], float]) -> Figure | None:
+        max_col = max(key[0] for key in self.pos_count.keys())
+        max_row = max(key[1] for key in self.pos_count.keys())
+        data = pd.DataFrame(0, index=range(max_row + 1), columns=range(max_col + 1), dtype="float")
+
+        for (col, row), value in raw_data.items():
+            if value == 0:
+                value = None
+            data.iat[row, col] = value
+        
+        rgb_array = self.render()
+        _, axes = plt.subplots(figsize=(self.env_settings.width, self.env_settings.height))
+        sns.heatmap(data, cbar=True, cmap="Greens", alpha=0.8, zorder=1, ax=axes)
+        axes.imshow(rgb_array, zorder=0, extent=[0, data.shape[1], data.shape[0],0]) # type: ignore
+        
+        return axes.get_figure()
+    
     def heatmap_from_data(self, raw_data: dict[tuple[int,int], int]| dict[tuple[int,int], float]) -> Figure | None:
-        """Display heatmap of position counts of the agent."""
         max_col = max(key[0] for key in self.pos_count.keys())
         max_row = max(key[1] for key in self.pos_count.keys())
         data = pd.DataFrame(0, index=range(max_row + 1), columns=range(max_col + 1), dtype="float")
@@ -365,7 +417,40 @@ class GridEngine(gym.Env, ABC):
     
     def heatmap(self) -> Figure | None:
         """Display heatmap of position counts of the agent."""
-        return self.heatmap_from_data(self.pos_count)
+
+        max_col = max(key[0] for key in self.pos_count.keys())
+        max_row = max(key[1] for key in self.pos_count.keys())
+        data = pd.DataFrame(0, index=range(max_row + 1), columns=range(max_col + 1), dtype="float")
+
+        for (col, row), value in self.pos_count.items():
+            if value == 0:
+                value = None
+            else:
+                value = math.log(value)
+            data.iat[row, col] = value
+
+        plt.figure(figsize=(self.env_settings.width, self.env_settings.height))
+        axes = sns.heatmap(data, cbar=True, cmap="Greens")
+        return axes.get_figure()
+
+    def overlay_heatmap(self) -> Figure | None:
+        """Display heatmap of position counts of the agent."""
+        max_col = max(key[0] for key in self.pos_count.keys())
+        max_row = max(key[1] for key in self.pos_count.keys())
+        data = pd.DataFrame(0, index=range(max_row + 1), columns=range(max_col + 1), dtype="float")
+
+        for (col, row), value in self.pos_count.items():
+            if value == 0:
+                value = None
+            data.iat[row, col] = value
+        
+        rgb_array = self.render()
+        _, axes = plt.subplots(figsize=(self.env_settings.width, self.env_settings.height))
+        sns.heatmap(data, cbar=True, cmap="Greens", alpha=0.8, zorder=1, ax=axes)
+        axes.imshow(rgb_array, zorder=0, extent=[0, data.shape[1], data.shape[0],0]) # type: ignore
+        
+        return axes.get_figure()
+    
 
     def init_render(self) -> None:
         """Initialise render objects."""
@@ -470,12 +555,35 @@ class GridEngine(gym.Env, ABC):
         return walkable_cor
 
     def _simplifiey_obs(self, raw_obs: np.ndarray) -> np.ndarray:
-        simplified_state = np.zeros(len(raw_obs), dtype=int)
-
-        for idx, cell in enumerate(raw_obs):
-            simplified_state[idx] = cell[0] + cell[1] + cell[2]
-
+        simplified_state = self._one_hot_encode_state(raw_obs)
         return simplified_state
+
+    def _one_hot_encode_state(self, state: np.ndarray):
+        if (not self.env_settings.use_globaly_unique_id):
+            obj_class_count = len(GridObject.id_map.keys())
+        else:
+            obj_class_count = GridObject._next_instance_id - 1
+
+        all_ids = state[:, 0]
+        all_colours = state[:, 1]
+        all_states = state[:, 2]
+
+        id_labels = range(1,obj_class_count+2)
+        id_encoding = one_hot_encode(all_ids, id_labels)
+
+        colour_labels = list(IX_TO_COLOR.keys())
+        colour_encoding = one_hot_encode_zero_indexed(all_colours, colour_labels)
+
+        encoded_state = np.asarray([])
+        for cell_idx in range(len(state)):
+            cell_id_encoded = id_encoding[cell_idx]
+            cell_colour_encoded = colour_encoding[cell_idx]
+            cell_state_encoded = state[cell_idx][2]
+
+
+            encoded_state = np.concatenate((encoded_state, cell_id_encoded, cell_colour_encoded, cell_state_encoded), axis=None)
+        
+        return encoded_state
 
     def _get_terminated(self) -> bool:
         return self._check_harmful(self.objects.agent.position) or self.check_task()
@@ -494,7 +602,11 @@ class GridEngine(gym.Env, ABC):
         # Construct pov by string
         xray = False
         if agent_pov.lower() == "global":
-            return GlobalView((self.env_settings.width, self.env_settings.height), self.env_settings.simple_obs)
+            return GlobalView(
+                (self.env_settings.width, self.env_settings.height),
+                self.env_settings.simple_obs,
+                self.env_settings.use_globaly_unique_id
+            )
 
         if agent_pov.lower().startswith("local_"):
             radius = agent_pov[6:]
@@ -507,7 +619,11 @@ class GridEngine(gym.Env, ABC):
                 radius.isnumeric() and int(radius) >= 0
             ), f"Invalid radius for local pov: {radius}"
             return LocalView(
-                int(radius), (self.env_settings.width, self.env_settings.height), xray, self.env_settings.simple_obs
+                int(radius),
+                (self.env_settings.width, self.env_settings.height),
+                xray,
+                self.env_settings.simple_obs,
+                self.env_settings.use_globaly_unique_id
             )
 
         if agent_pov.lower().startswith("forward_"):
@@ -533,7 +649,8 @@ class GridEngine(gym.Env, ABC):
                 int(pov_width),
                 (self.env_settings.width, self.env_settings.height),
                 xray,
-                self.env_settings.simple_obs
+                self.env_settings.simple_obs,
+                self.env_settings.use_globaly_unique_id
             )
 
         raise ValueError(f"Invalid agent pov: {agent_pov}.")
