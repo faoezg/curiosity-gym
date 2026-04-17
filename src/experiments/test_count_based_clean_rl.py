@@ -1,15 +1,12 @@
 from experiments.clean_rl.ppo import Args, run_clean_rl_ppo_model
-from curiosity_gym import DistractiveEnv, SparseEnv, MultitaskEnv
+from curiosity_gym import DistractiveEnv, SparseEnv, MultitaskEnv, DetachmentEnv, DerailmentEnv
 from curiosity_gym.core.gridengine import GridEngine 
 
-from experiments.experiment_setup.harness import ExperimentHarness
-from experiments.experiment_setup.experiment_model import ExperimentModel
-from experiments.experiment_setup.experiment_evaluator import ExperimentEvaluator
+from experiments.count_based.unified_count import UnifiedCountModel
+from experiments.count_based.unified_count_reward_wrapper import UnifiedCountWrapper
 
-from experiments.coin_flip import CoinFlipModel
-
-import gymnasium as gym
 import torch
+import gymnasium as gym
 
 SB3_DEVICE = "cpu"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -17,7 +14,7 @@ TRAINING_EPISODES = 100
 print("Running own models on: ", DEVICE)
 
 def train_clean_rl_model() -> None:
-    env_name = "SparseEnv-CoinFlip"
+    env_name = "SparseEnv-UnifiedCount"
     env = gym.make(env_name,
                    max_episodes=1,
                    max_training_steps=1,
@@ -32,6 +29,7 @@ def train_clean_rl_model() -> None:
         num_envs=1,
         num_steps=TRAINING_EPISODES,
         capture_video=True,
+        batch_size=12
     )
     run_clean_rl_ppo_model(args)
 

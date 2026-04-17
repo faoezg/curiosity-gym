@@ -1,61 +1,80 @@
+from typing import override
 from collections import defaultdict
 import numpy as np
 
-class UnifiedCountModel():
+from experiments.components import IntrinsicMotivationModel
+
+class UnifiedCountModel(IntrinsicMotivationModel):
     """
     Docstring for UnifiedCountModel
     This model does approximate any functions.
     It is table based given that in a gridworld such curosity gym
     the state-space is discrete.
 
-    On that note, this model will treat a state as a set of three floats
     """
     def __init__(self,
                  possible_state_dim: int,
-                 pseudo_prior: float = 0.01 # ensure non-zero prob, 
+                 pseudo_prior: float = 0.01, # ensure non-zero prob, 
+                 beta: float = 0.05,
+                 eps: float = 0.01,
+                 clip_range = 0.02
                  ) -> None:
         self.possible_state_dim = possible_state_dim
         self.prior = pseudo_prior
         self.visitation_dict = defaultdict(float) # ensures that unseen states return 0 when read 
         self.total_visited_states = 0
-    
-    def update_observation(self, state: np.ndarray) -> None:
-        state = tuple(map(tuple, state))
-        self.visitation_dict[state] += 1
+
+        self.beta = beta
+        self.eps = eps
+        self.clip_range = clip_range
+ 
+    @override
+    def _train_network(self, state: np.ndarray) -> None:
+        state_key = state.tobytes()
+        self.visitation_dict[state_key] += 1
         self.total_visited_states += 1
     
     def calc_visitation_prob(self, state: np.ndarray) -> float:
-        state = tuple(map(tuple, state))
+        state_key = state.tobytes()
         log_prob = 0.0
-        log_prob += np.log(self._calc_cell_visitation_prob(state))
+        log_prob += np.log(self._calc_cell_visitation_prob(state_key))
         return np.exp(log_prob)
 
     def calc_visitation_prob_after_observation(self, state: np.ndarray) -> float:
-        state = tuple(map(tuple, state))
+        state_key = state.tobytes()
         log_prob = 0.0
         # calc in log-space for stability on large state-spaces
-        log_prob += np.log(self._calc_new_state_visitation_prob(state))
+        log_prob += np.log(self._calc_cell_visitation_prob(state_key, 1))
         return np.exp(log_prob)
-
-    def _calc_current_cell_visitation_prob(self, state: list[tuple[float, float, float]]) -> float:
-        return self._calc_cell_visitation_prob(state)
-
-    def _calc_new_state_visitation_prob(self, state: list[tuple[float, float, float]]) -> float:
-        return self._calc_cell_visitation_prob(state, 1)
     
-    
-    def _calc_cell_visitation_prob(self, state: list[tuple[float, float, float]], observation_count: int = 0) -> float:
+    def _calc_cell_visitation_prob(self, state: bytes, observation_count: int = 0) -> float:
         """
         Docstring for _calc_current_state_visitation_prob
         
         :param cell: current state of the env
-        :type cell: tuple[float, float, float]
+        :type cell: bytes
         :param observation_count: the amount of new data samples, that is the amount of observation of a given state since the latest update
         :type: int
         :return: rho(cell) - visitation probability of the cell
         :rtype: float
         """
         pseudo_count = self.visitation_dict[state] + observation_count + self.prior # + prior if state is unvisited
-        total_visited_states = self.total_visited_states + observation_count + self.prior * self.possible_state_dim
+        total_visited_states = self.total_visited_states + observation_count + self.prior
 
         return pseudo_count / total_visited_states
+
+    @override
+    def calc_intrinsic_reward(self, state: np.ndarray) -> float:
+        rho = self.calc_visitation_prob(state)
+        rho_after = self.calc_visitation_prob_after_observation(state)
+
+        if (rho_after <= rho):
+            pseudo_count = 0.0
+        else:
+            pseudo_count = (rho * (1.0 - rho_after) / (rho_after - rho))
+
+        intrinsic_reward = self.beta / np.sqrt(pseudo_count + self.eps)
+        if (intrinsic_reward <= self.clip_range):
+            return 0.0
+        else:
+            return intrinsic_reward

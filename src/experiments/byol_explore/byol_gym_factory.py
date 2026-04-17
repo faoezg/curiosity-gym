@@ -18,9 +18,18 @@ def make_byol_env(
     latent_rep_dim: int = 4,
     time_horizon: int = 5,
     alpha: float = 0.9999,
-    render_mode: str = None
+    render_mode: str = "rgb_array",
+    use_simple_obs: bool = True,
+    use_globaly_unique_id: bool = True
 ) -> gym.Env:
-    raw_env: GridEngine = gym.make(base_env_id, render_mode=render_mode, agentPOV="local_2") # type: ignore
+    raw_env: GridEngine = gym.make(base_env_id,
+                                   render_mode=render_mode,
+                                   agentPOV=base_env_pov,
+                                   simple_obs=use_simple_obs,
+                                   use_globaly_unique_id=use_globaly_unique_id
+                                   ) # type: ignore
+
+
 
     byol_model = ByolExploreModel(state_dim=raw_env.observation_space.shape[0], # type: ignore
                             action_dim=raw_env.action_space.n, # type: ignore

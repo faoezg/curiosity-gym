@@ -1,48 +1,34 @@
 import gymnasium as gym
+from torch import device
+
+from curiosity_gym.core.gridengine import GridEngine
 from experiments.count_based.unified_count import UnifiedCountModel
+from experiments.components import IntrinsicMotivationModelWrapper
 from curiosity_gym.core.gridengine import Action, SimplerAction
 import numpy as np
 
-class UnifiedCountWrapper(gym.Wrapper):
+class UnifiedCountWrapper(IntrinsicMotivationModelWrapper):
     def __init__(self,
-                 env: gym.Env,
+                 device: device,
+                 env: GridEngine,
                  count_model: UnifiedCountModel,
-                 beta: float = 0.05,
-                 eps: float = 0.01,
-                 clip_range = 0.02):
-        super().__init__(env)
-        self.count_model = count_model
-        self.beta = beta
-        self.eps = eps
-        self.clip_range = clip_range
-    
-    def step(self, action: Action | SimplerAction):
-        state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
+                 intrinsic_reset_threshold: float = 0.5,
+                 allow_global_state_reset: bool = False,
+                 max_training_steps: int = 500,
+                 max_episodes: int = 1000):
+        super().__init__(env,
+                         count_model,
+                         device,
+                         intrinsic_reset_threshold,
+                         allow_global_state_reset,
+                         max_training_steps,
+                         max_episodes)
+        self.intrinsic_model: UnifiedCountModel = self.intrinsic_model
 
-        intrinsic_reward = self._calc_intrinsic_reward(state)
-        self.count_model.update_observation(state)
-        reward = extrinsic_reward + intrinsic_reward # type: ignore
+    def _get_intrinsic_reward_from_model(self, state, action):
+        intrinsic_reward = self.intrinsic_model.calc_intrinsic_reward(state)
+        self.intrinsic_model._train_network(state)
+        return intrinsic_reward
 
-        info["extrinsic_reward"] = extrinsic_reward
-        info["intrinsic_reward"] = intrinsic_reward
-        info["total_reward"] = reward 
-
-        print(info)
-
-        return state, reward, terminated, truncated, info
-    
-    def _calc_intrinsic_reward(self, state: np.ndarray) -> float:
-        rho = self.count_model.calc_visitation_prob(state)
-        rho_after = self.count_model.calc_visitation_prob_after_observation(state)
-
-        if (rho_after <= rho):
-            pseudo_count = 0.0
-        else:
-            pseudo_count = (rho * (1.0 - rho_after) / (rho_after - rho))
-
-        intrinsic_reward = self.beta / np.sqrt(pseudo_count + self.eps)
-
-        if (intrinsic_reward <= self.clip_range):
-            return 0.0
-        else:
-            return intrinsic_reward
+    def _get_intrinsic_reward_from_model_no_training(self, state, action):
+        return self.intrinsic_model.calc_intrinsic_reward(state)

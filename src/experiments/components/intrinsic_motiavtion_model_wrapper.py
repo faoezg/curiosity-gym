@@ -51,7 +51,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             obs, info = self.env.reset_to_specific_global_state(self.last_best_global_state, **kwargs)
 
         is_trainig_done = self.episode_count >= self.max_episodes or self.training_step >= self.max_training_steps
-        if (is_trainig_done and self.absolute_episode_count % 20 == 0):
+        if (is_trainig_done and self.absolute_episode_count % 1 == 0):
             # TODO THINK ABOUT BYOL
             # ORDER MATTERS BECOUSE OF AGENT STATE/COLOUR CHANGE ON RESET
             self.print_intrinsic_heatmap()
