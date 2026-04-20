@@ -14,18 +14,25 @@ import gymnasium as gym
 
 SB3_DEVICE = "cpu"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-TRAINING_STEPS = 50_000
-EVAL_EPISODES = 5
+TRAINING_EPISODES = 100
 print("Running own models on: ", DEVICE)
 
 def train_clean_rl_model() -> None:
-    env_name = "DistractiveEnv"
+    env_name = "SparseEnv-ByolExplore"
+    env = gym.make(env_name,
+                   max_episodes=1,
+                   max_training_steps=1,
+                   base_env_pov="local_2", # "forward_2_3",
+                   render_mode="rgb_array",
+                   device=DEVICE)
+
     args = Args(
         env_name,
-        env_id=env_name+"-ByolExplore",
+        env_id=env_name,
+        env=env,
         num_envs=1,
-        num_steps=TRAINING_STEPS,
-        capture_video=True
+        num_steps=TRAINING_EPISODES,
+        capture_video=True,
     )
     run_clean_rl_ppo_model(args)
 

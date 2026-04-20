@@ -27,3 +27,19 @@ gym.register(
         "base_env_id":"MultitaskEnv"
     }
 )
+
+gym.register(
+    id="DetachmentEnv-Icm",
+    entry_point="experiments.icm.icm_factory:make_icm_env",
+    kwargs={
+        "base_env_id":"DetachmentEnv"
+    }
+)
+
+gym.register(
+    id="DerailmentEnv-Icm",
+    entry_point="experiments.icm.icm_factory:make_icm_env",
+    kwargs={
+        "base_env_id":"DerailmentEnv"
+    }
+)

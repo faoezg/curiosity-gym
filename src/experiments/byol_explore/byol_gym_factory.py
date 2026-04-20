@@ -14,11 +14,13 @@ def make_byol_env(
     device: str = "cpu",
     lambda_byol: float = 5.0,
     reward_norm_decay: float = 0.99,
-    hidden_dim: int = 8,
-    latent_rep_dim: int = 4,
+    hidden_dim: int = 32,
+    latent_rep_dim: int = 128,
     time_horizon: int = 5,
     alpha: float = 0.9999,
     render_mode: str = "rgb_array",
+    max_episodes: int = 5000,
+    max_training_steps: int = 500,
     use_simple_obs: bool = True,
     use_globaly_unique_id: bool = True
 ) -> gym.Env:
@@ -45,5 +47,7 @@ def make_byol_env(
     return ByolExploreWrapper(
         env=raw_env,
         byol_explore_model=byol_model,
-        device=torch.device(device)
+        device=torch.device(device),
+        max_episodes=max_episodes,
+        max_training_steps=max_training_steps
     )

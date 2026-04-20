@@ -1,7 +1,5 @@
-import gymnasium as gym
 import torch
 from torch import device
-from collections import deque
 
 from curiosity_gym.core.gridengine import GridEngine
 from .byol_model import ByolExploreModel
@@ -16,8 +14,15 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         device: device,
         intrinsic_reset_threshold: float = 0.5,
         allow_global_state_reset: bool = False,
+        max_training_steps: int = 500,
+        max_episodes: int = 1000
     ):
-        super().__init__(env, byol_explore_model, device, intrinsic_reset_threshold, allow_global_state_reset)
+        super().__init__(env, byol_explore_model,
+                         device,
+                         intrinsic_reset_threshold,
+                         allow_global_state_reset,
+                         max_training_steps,
+                         max_episodes)
         self.intrinsic_model: ByolExploreModel = self.intrinsic_model
         self.buffer = ReplayBuffer(size=self.intrinsic_model.byol_network.time_horizon + 1)
 
@@ -29,9 +34,14 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
 
         if self.buffer.is_fully_populated():
             state_buffer, action_buffer = self._create_trajectory()
+            # This is fine as the buffer only every has one trajecotry. Thus o_t+1 is the latest in the buffer
+            # Therefore, if the sample the entire buffer the loss should be correctly associated this the current transition
             intrinsic_reward, byol_loss = self.intrinsic_model.calc_intrinsic_reward(state_buffer, action_buffer)
             self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state)
-            reward = extrinsic_reward + intrinsic_reward # type: ignore
+            if (intrinsic_reward > 0.3): # TODO MAKE INTO FIELD + CONST?
+                reward = extrinsic_reward + intrinsic_reward # type: ignore
+            else:
+                reward = extrinsic_reward
 
             self.intrinsic_model._train_network(byol_loss)
         else:
@@ -48,7 +58,7 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
     def _create_trajectory(self):
         state_tensors = []
         actions = []
-        samples = self.buffer.sample(len(self.buffer))
+        samples = self.buffer.buffer # not sampling as that breaks causality
 
         for transition in samples:
             state_tensor = torch.from_numpy(transition.next_state)

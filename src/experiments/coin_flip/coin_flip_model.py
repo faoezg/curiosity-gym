@@ -92,8 +92,8 @@ class CoinFlipModel(IntrinsicMotivationModel):
 
         coin_flip_preds, _, _, one_over_counts = self.coin_flip_network(state_batch)
 
-        loss = nn.functional.mse_loss(coin_flip_preds, rademacher_sample_batch, reduction="none")
-        loss = (loss * weights_tensor.unsqueeze(1)).mean()
+        loss = nn.functional.mse_loss(coin_flip_preds, rademacher_sample_batch, reduction="none").mean()
+        #loss = (loss * weights_tensor.unsqueeze(1)).mean()
     
         self.optimizer.zero_grad()
         loss.backward()

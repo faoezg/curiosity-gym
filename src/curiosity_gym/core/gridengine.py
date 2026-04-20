@@ -332,39 +332,6 @@ class GridEngine(gym.Env, ABC):
             else:
                 state[x + y * self.env_settings.width] = ob.get_identity()
         return state
-    
-    def get_state_with_agent_color(self, colour: int) -> np.ndarray:
-        """Get the current state of the environment.\n
-        The returned state is independent of the agent's :attr:`observation_space`.
-        And manipulates the agent to have a certain color to simulate having picked up a certian key
-        Returns
-        -------
-        state : np.ndarray
-            Current state of the environment.
-        """
-        state = np.zeros(
-            [self.env_settings.width * self.env_settings.height, 3], dtype=int
-        )
-        for ob in self.objects.get_all():
-            x, y = ob.position
-            assert x + y * self.env_settings.width < len(
-                state
-            ), f"""Position [{x},{y}] of object with type {self.get_object_ids()[ob.identifier]}
-            is invalid for grid with size ({self.env_settings.width}, {self.env_settings.height})"""
-            if (isinstance(ob, Agent)):
-                old_agent_color = ob.color
-                ob.color = colour
-                if (self.env_settings.use_globaly_unique_id):
-                    state[x + y * self.env_settings.width] = ob.get_unique_identity()
-                else:
-                    state[x + y * self.env_settings.width] = ob.get_identity()
-                ob.color = old_agent_color
-            else:
-                if (self.env_settings.use_globaly_unique_id):
-                    state[x + y * self.env_settings.width] = ob.get_unique_identity()
-                else:
-                    state[x + y * self.env_settings.width] = ob.get_identity()
-        return state
 
     def get_raw_state(self) -> list[ObjectState]:
         """Get the current state of the environment.\n
@@ -394,7 +361,7 @@ class GridEngine(gym.Env, ABC):
                 value = None
             data.iat[row, col] = value
         
-        rgb_array = self.render()
+        rgb_array = self._render_frame(False)
         _, axes = plt.subplots(figsize=(self.env_settings.width, self.env_settings.height))
         sns.heatmap(data, cbar=True, cmap="Greens", alpha=0.8, zorder=1, ax=axes)
         axes.imshow(rgb_array, zorder=0, extent=[0, data.shape[1], data.shape[0],0]) # type: ignore
@@ -444,7 +411,7 @@ class GridEngine(gym.Env, ABC):
                 value = None
             data.iat[row, col] = value
         
-        rgb_array = self.render()
+        rgb_array = self._render_frame(False)
         _, axes = plt.subplots(figsize=(self.env_settings.width, self.env_settings.height))
         sns.heatmap(data, cbar=True, cmap="Greens", alpha=0.8, zorder=1, ax=axes)
         axes.imshow(rgb_array, zorder=0, extent=[0, data.shape[1], data.shape[0],0]) # type: ignore
@@ -536,13 +503,21 @@ class GridEngine(gym.Env, ABC):
             obs = self._simplifiey_obs(obs)
         return obs
     
-    def get_obs_by_state_and_agent_pos(self, state: np.ndarray, agent_pos: tuple[int,int]) -> np.ndarray:
+    def get_obs_by_state_and_agent_pos(self, agent_pos: tuple[int,int], colour: int, rotation: int) -> np.ndarray:
         actual_agent_pos = self.objects.agent.position
+        actual_agent_colour = self.objects.agent.color
+        actual_agent_rotation = self.objects.agent.state
         self.objects.agent.position = np.array(agent_pos)
-        obs = self.agent_pov.transform_obs(state, self.objects.agent)
+        self.objects.agent.color = colour
+        self.objects.agent.state = rotation
+        obs = self.agent_pov.transform_obs(self.get_state(), self.objects.agent)
         if (self.env_settings.simple_obs):
             obs = self._simplifiey_obs(obs)
+
         self.objects.agent.position = actual_agent_pos
+        self.objects.agent.color = actual_agent_colour
+        self.objects.agent.state = actual_agent_rotation
+
         return obs
     
     def get_every_wakable_cor(self):
@@ -655,7 +630,7 @@ class GridEngine(gym.Env, ABC):
 
         raise ValueError(f"Invalid agent pov: {agent_pov}.")
 
-    def _render_frame(self) -> np.ndarray | None:
+    def _render_frame(self, with_view_overlay: bool = True) -> np.ndarray | None:
         # Define canvas for new Frame
         pygame.init()
         window_size = (
@@ -690,11 +665,12 @@ class GridEngine(gym.Env, ABC):
             )
 
         # Add overlay for visible cells
-        for pos in self.agent_pov.visible_positions:
-            overlay = pygame.Surface((tilesize, tilesize))
-            overlay.set_alpha(30)
-            overlay.fill((255, 153, 20))
-            canvas.blit(overlay, (pos[0] * tilesize, pos[1] * tilesize))
+        if (with_view_overlay):
+            for pos in self.agent_pov.visible_positions:
+                overlay = pygame.Surface((tilesize, tilesize))
+                overlay.set_alpha(30)
+                overlay.fill((255, 153, 20))
+                canvas.blit(overlay, (pos[0] * tilesize, pos[1] * tilesize))
 
         # Display canvas in window
         if self.render_settings.render_mode == "human":

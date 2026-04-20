@@ -2,6 +2,7 @@ import gymnasium as gym
 from typing import override
 
 from curiosity_gym.core.gridengine import GridEngine
+import matplotlib.pyplot as plt
 
 class LoggingWrapper(gym.Wrapper):
     def __init__(self, env: GridEngine, training_steps: int, training_episodes: int):
@@ -31,10 +32,17 @@ class LoggingWrapper(gym.Wrapper):
 
     def _save_environment_heatmaps(self) -> None:
         file_path = f"{self.env.name}_Heatmap.png"
+        overlay_file_path = f"{self.env.name}_Heatmap_overlay.png"
         figure = self.env.heatmap()
+        overlay_figure = self.env.overlay_heatmap()
         if (figure is not None):
             figure.savefig(file_path)
             figure.clear()
+        if (overlay_figure is not None):
+            overlay_figure.savefig(overlay_file_path)
+            overlay_figure.clear()
         else:
             # TODO make proper error?
             print("Exporting Heatmaps failed, as no figure was able to be created")
+
+        plt.close()

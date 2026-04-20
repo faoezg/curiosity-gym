@@ -23,7 +23,7 @@ class Rotation(Enum):
     """Possible rotations in a curiosity-gym grid environment."""
 
     # TODO DOCUMENT + PAPER, OR REVERT
-    RIGHT = -100
-    UP = 50
-    LEFT = -50
-    DOWN = 100
+    RIGHT = 0 
+    UP = 1
+    LEFT = 2
+    DOWN = 3

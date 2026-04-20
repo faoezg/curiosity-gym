@@ -3,15 +3,16 @@ from typing import Any
 import gymnasium as gym
 from torch import device
 import random
-import numpy as np
 import matplotlib.pyplot as plt
+from collections import defaultdict
 
 from curiosity_gym.core.gridengine import GridEngine
-from curiosity_gym.utils.enums import Action
+from curiosity_gym.utils.enums import Action, Rotation
 from curiosity_gym.core.objects import Key
 
 
 from .intrinsic_motiavtion_model import IntrinsicMotivationModel
+from experiments.byol_explore.byol_model import ByolExploreModel
 
 class IntrinsicMotivationModelWrapper(gym.Wrapper):
     def __init__(self,
@@ -38,6 +39,8 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.episode_count = -1 # given inital reset
         self.absolute_episode_count = -1 
 
+        self.state_space_visited = defaultdict(int)
+
     def reset(self, **kwargs):
         self.training_step = 0
         self.episode_count += 1
@@ -51,10 +54,11 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             obs, info = self.env.reset_to_specific_global_state(self.last_best_global_state, **kwargs)
 
         is_trainig_done = self.episode_count >= self.max_episodes or self.training_step >= self.max_training_steps
-        if (is_trainig_done and self.absolute_episode_count % 1 == 0):
+        if (is_trainig_done and self.absolute_episode_count % 50 == 0):
             # TODO THINK ABOUT BYOL
             # ORDER MATTERS BECOUSE OF AGENT STATE/COLOUR CHANGE ON RESET
-            self.print_intrinsic_heatmap()
+            if (not isinstance(self.intrinsic_model, ByolExploreModel)):
+                self.print_intrinsic_heatmap()
             self._save_environment_heatmaps()
         
         self.prev_state = obs
@@ -64,11 +68,15 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action)
         intrinsic_reward = self._get_intrinsic_reward_from_model(state=state, action=action)
         self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state)
-        reward = extrinsic_reward + intrinsic_reward
+        if (intrinsic_reward > 0.3): # TODO make field and constructor?
+            reward = extrinsic_reward + intrinsic_reward
+        else:
+            reward = extrinsic_reward
 
         info["extrinsic_reward"] = extrinsic_reward
         info["intrinsic_reward"] = intrinsic_reward
         info["total_reward"] = reward 
+        self.state_space_visited[self.env.objects.agent.position] = 1
 
         self.prev_state = state
         self.training_step += 1
@@ -92,8 +100,8 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
 
     # TODO make nicer and normalize intrinsic reward for comparisons??
     def _calc_intrinsic_reward_map(self) -> tuple[list[dict[tuple[int,int], float]], list[int]]:
-        colours = []
         intrinsic_maps = []
+        colours = []
 
         for other_obj in self.env.objects.other:
             if (isinstance(other_obj, Key)):
@@ -101,25 +109,31 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                 colours.append(colour)
 
         colours.append(self.env.objects.agent.start_color)
+
         for colour in colours:
-            colour_state = self.env.get_state_with_agent_color(colour)
-            colour_intrinsic_map = self._calc_intrinsic_map(colour_state)
+            colour_intrinsic_map = self._calc_intrinsic_map(colour)
             intrinsic_maps.append(colour_intrinsic_map)
 
         return intrinsic_maps, colours
     
-    def _calc_intrinsic_map(self, state: np.ndarray):
-        intrinsic_map = {}
+    def _calc_intrinsic_map(self, colour: int):
+        intrinsic_map = defaultdict(float)
         walkable_cor = self.env.get_every_wakable_cor()
+
+        rotation_list = [element.value for element in Rotation]
 
         action_list = [element.value for element in Action] # Why is there no method for this?
         total_reward = 0
         for cor in walkable_cor:
-            obs = self.env.get_obs_by_state_and_agent_pos(state, cor) # type: ignore
-            random_action = random.choice(action_list)
-            intrinsic_reward = self._get_intrinsic_reward_from_model_no_training(state=obs, action=random_action)
+            cor_intrinsic_reward = 0
+            for rotation in rotation_list:
+                obs = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation) # type: ignore
+                random_action = random.choice(action_list)
+                intrinsic_reward = self._get_intrinsic_reward_from_model_no_training(state=obs, action=random_action)
+                cor_intrinsic_reward += intrinsic_reward
+            intrinsic_reward = cor_intrinsic_reward / 4
             total_reward += intrinsic_reward
-            intrinsic_map[cor] = intrinsic_reward
+            intrinsic_map[cor] += intrinsic_reward
 
         if (total_reward > 0):
             for cor, value in intrinsic_map.items():

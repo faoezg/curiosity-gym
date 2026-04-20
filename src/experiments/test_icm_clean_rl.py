@@ -1,5 +1,5 @@
 from experiments.clean_rl.ppo import Args, run_clean_rl_ppo_model
-from curiosity_gym import DistractiveEnv, SparseEnv, MultitaskEnv
+from curiosity_gym import DistractiveEnv, SparseEnv, MultitaskEnv, DetachmentEnv, DerailmentEnv
 from curiosity_gym.core.gridengine import GridEngine 
 
 from experiments.experiment_setup.harness import ExperimentHarness
@@ -21,7 +21,7 @@ def train_clean_rl_model() -> None:
     env = gym.make(env_name,
                    max_episodes=1,
                    max_training_steps=1,
-                   base_env_pov="forward_2_3",
+                   base_env_pov="global",
                    render_mode="rgb_array",
                    device=DEVICE)
 
