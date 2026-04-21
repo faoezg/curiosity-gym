@@ -2,10 +2,6 @@ from experiments.clean_rl.ppo import Args, run_clean_rl_ppo_model
 from curiosity_gym import DistractiveEnv, SparseEnv, MultitaskEnv
 from curiosity_gym.core.gridengine import GridEngine 
 
-from experiments.experiment_setup.harness import ExperimentHarness
-from experiments.experiment_setup.experiment_model import ExperimentModel
-from experiments.experiment_setup.experiment_evaluator import ExperimentEvaluator
-
 from experiments.byol_explore.byol_model import ByolExploreModel
 from experiments.byol_explore.byol_wrapper import ByolExploreWrapper
 
@@ -18,7 +14,7 @@ TRAINING_EPISODES = 100
 print("Running own models on: ", DEVICE)
 
 def train_clean_rl_model() -> None:
-    env_name = "SparseEnv-ByolExplore"
+    env_name = "MountainCar-ByolExplore"
     env = gym.make(env_name,
                    max_episodes=1,
                    max_training_steps=1,

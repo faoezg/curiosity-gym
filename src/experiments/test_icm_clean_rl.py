@@ -2,10 +2,6 @@ from experiments.clean_rl.ppo import Args, run_clean_rl_ppo_model
 from curiosity_gym import DistractiveEnv, SparseEnv, MultitaskEnv, DetachmentEnv, DerailmentEnv
 from curiosity_gym.core.gridengine import GridEngine 
 
-from experiments.experiment_setup.harness import ExperimentHarness
-from experiments.experiment_setup.experiment_model import ExperimentModel
-from experiments.experiment_setup.experiment_evaluator import ExperimentEvaluator
-
 from experiments.icm import ICMModel
 
 import torch
@@ -16,12 +12,14 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 TRAINING_EPISODES = 10
 print("Running own models on: ", DEVICE)
 
+
 def train_clean_rl_model() -> None:
-    env_name = "DistractiveEnv-Icm"
+    #env_name = "SparseEnv-Icm"
+    env_name = "MountainCar-Icm"
     env = gym.make(env_name,
                    max_episodes=1,
                    max_training_steps=1,
-                   base_env_pov="global",
+                   base_env_pov="local_2",
                    render_mode="rgb_array",
                    device=DEVICE)
 

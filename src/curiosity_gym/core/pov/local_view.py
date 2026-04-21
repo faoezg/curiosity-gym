@@ -5,6 +5,7 @@ import numpy as np
 from gymnasium import spaces
 from curiosity_gym.core.objects import Agent, GridObject
 from curiosity_gym.utils.constants import IX_TO_COLOR
+from curiosity_gym.utils.enums import Action
 
 class LocalView(AgentPOV):
     """Agent point-of-view observing grid cells in a given radius around the agent.
@@ -36,7 +37,7 @@ class LocalView(AgentPOV):
     ) -> None:
         self.radius = radius
         self.xray = xray
-        action_space = spaces.Discrete(4)
+        action_space = spaces.Discrete(len(Action))
         number_of_cells = (self.radius * 2 + 1) ** 2
         if (not individual_obj_ids):
             obj_id_count = len(GridObject.id_map.keys())

@@ -24,7 +24,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                  max_training_steps: int = 500,
                  max_episodes: int = 1000) -> None:
         super().__init__(env)
-        self.env: GridEngine = self.env # getting ride of bad type hint as casting isn't a real thing in python
+        self.env: GridEngine | gym.Env = self.env # getting ride of bad type hint as casting isn't a real thing in python
         self.intrinsic_model = intrinsic_model
         self.device = device
 
@@ -40,6 +40,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.absolute_episode_count = -1 
 
         self.state_space_visited = defaultdict(int)
+        self.total_reward = 0
 
     def reset(self, **kwargs):
         self.training_step = 0
@@ -50,33 +51,44 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
 
         if not self.allow_global_state_reset or self.last_best_global_state is None:
             obs, info = self.env.reset(**kwargs)
-        else:
+        elif (isinstance(self.env, GridEngine)):
             obs, info = self.env.reset_to_specific_global_state(self.last_best_global_state, **kwargs)
 
-        is_trainig_done = self.episode_count >= self.max_episodes or self.training_step >= self.max_training_steps
-        if (is_trainig_done and self.absolute_episode_count % 50 == 0):
-            # TODO THINK ABOUT BYOL
-            # ORDER MATTERS BECOUSE OF AGENT STATE/COLOUR CHANGE ON RESET
-            if (not isinstance(self.intrinsic_model, ByolExploreModel)):
-                self.print_intrinsic_heatmap()
-            self._save_environment_heatmaps()
-        
-        self.prev_state = obs
-        return obs, info
+            is_trainig_done = self.episode_count >= self.max_episodes or self.training_step >= self.max_training_steps
+            if (is_trainig_done and self.absolute_episode_count % 50 == 0):
+                # TODO THINK ABOUT BYOL
+                # ORDER MATTERS BECOUSE OF AGENT STATE/COLOUR CHANGE ON RESET
+                if (not isinstance(self.intrinsic_model, ByolExploreModel)):
+                    self.print_intrinsic_heatmap()
+                self._save_environment_heatmaps()
+            
+        self.prev_state = obs # type: ignore
+        return obs, info # type: ignore
 
     def step(self, action):
-        state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action)
+        if (isinstance(self.env, GridEngine)):
+            state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action)
+        else:
+            state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
         intrinsic_reward = self._get_intrinsic_reward_from_model(state=state, action=action)
-        self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state)
-        if (intrinsic_reward > 0.3): # TODO make field and constructor?
-            reward = extrinsic_reward + intrinsic_reward
+        if (isinstance(self.env, GridEngine)):
+            self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state) # type: ignore
+        if (intrinsic_reward > 0.1):
+            reward = extrinsic_reward + intrinsic_reward # type: ignore
         else:
             reward = extrinsic_reward
 
         info["extrinsic_reward"] = extrinsic_reward
         info["intrinsic_reward"] = intrinsic_reward
         info["total_reward"] = reward 
-        self.state_space_visited[self.env.objects.agent.position] = 1
+
+        if (isinstance(self.env, GridEngine)):
+            self.state_space_visited[self.env.objects.agent.position.tobytes()] = 1
+
+        self.total_reward += reward
+
+        print(info)
+
 
         self.prev_state = state
         self.training_step += 1

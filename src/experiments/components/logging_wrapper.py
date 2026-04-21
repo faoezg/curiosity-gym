@@ -25,7 +25,7 @@ class LoggingWrapper(gym.Wrapper):
         self.episode_count += 1
         print("Episode Count:", self.episode_count)
 
-        if (self.episode_count >= self.max_episodes or self.training_step >= self.max_training_steps):
+        if (self.episode_count >= self.max_episodes):
             self._save_environment_heatmaps()
 
         return obs, info

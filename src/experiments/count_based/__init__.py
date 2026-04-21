@@ -40,3 +40,23 @@ gym.register(
         "max_episodes": 500 
     }
 )
+
+gym.register(
+    id="Montezuma-UnifiedCount",
+    entry_point="experiments.count_based.unified_count_factory:make_unified_count_env",
+    kwargs={
+        "base_env_id":"ALE/MontezumaRevenge-v5",
+        "max_episodes": 500,
+        "is_atari": True
+    }
+)
+
+gym.register(
+    id="MountainCar-UnifiedCount",
+    entry_point="experiments.count_based.unified_count_factory:make_unified_count_env",
+    kwargs={
+        "base_env_id":"MountainCar-v0",
+        "max_episodes": 500,
+        "is_atari": True
+    }
+)

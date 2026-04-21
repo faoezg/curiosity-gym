@@ -55,6 +55,7 @@ class Agent(GridObject):
             Returns 0.
         """
 
+        #if action == Action.FORWARD and (walkable or front_object):
         if action == Action.FORWARD and walkable:
             self.position = self.position + STATE_TO_ROTATION[self.state] * np.array(
                 [1, -1]

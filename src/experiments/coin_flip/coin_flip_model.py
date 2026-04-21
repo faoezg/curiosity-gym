@@ -30,7 +30,7 @@ class CoinFlipModel(IntrinsicMotivationModel):
         self.reward_scale = reward_scale
 
         self.coin_flip_network = CoinFlipNetwork(state_dim, hidden_dim, d_dim).to(device)
-        self.optimizer = optim.Adam(params=self.coin_flip_network.parameters(), lr=0.0001)
+        self.optimizer = optim.Adam(params=self.coin_flip_network.parameters(), lr=0.001)
         self.rademacher_generator = RademacherDistGenerator(d_dim, p_replace)
         self.buffer = PriorityReplayBuffer(buffer_size, priority_alpha)
 

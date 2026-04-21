@@ -20,7 +20,7 @@ print("Running own models on: ", DEVICE)
 def train_clean_rl_model() -> None:
     env_name = "DistractiveEnv-Experiment"
     env = gym.make(env_name,
-                   max_episodes=10_000,
+                   max_episodes=10000,
                    max_training_steps=1,
                    base_env_pov="local_2", # "forward_2_3",
                    render_mode="rgb_array")

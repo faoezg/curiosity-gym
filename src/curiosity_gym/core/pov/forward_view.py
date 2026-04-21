@@ -6,6 +6,7 @@ from gymnasium import spaces
 from curiosity_gym.core.objects import Agent
 from curiosity_gym.core.objects import Agent, GridObject
 from curiosity_gym.utils.constants import IX_TO_COLOR
+from curiosity_gym.utils.enums import Action
 
 class ForwardView(AgentPOV):
     """Agent point-of-view observing grid cells in front of the agent.
@@ -42,7 +43,7 @@ class ForwardView(AgentPOV):
         self.pov_width = pov_width
         self.pov_length = pov_length
         self.xray = xray
-        action_space = spaces.Discrete(4)
+        action_space = spaces.Discrete(len(Action))
         number_of_cells = (pov_length + 1) * pov_width
         if (not individual_obj_ids):
             obj_id_count = len(GridObject.id_map.keys())

@@ -409,6 +409,8 @@ class GridEngine(gym.Env, ABC):
         for (col, row), value in self.pos_count.items():
             if value == 0:
                 value = None
+            else:
+                value = math.log(value)
             data.iat[row, col] = value
         
         rgb_array = self._render_frame(False)

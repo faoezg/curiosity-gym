@@ -14,15 +14,18 @@ def make_unified_count_env(
     max_episodes: int = 1,
     max_training_steps: int = 500,
     use_simple_obs: bool = True,
-    use_globaly_unique_id: bool = True
+    use_globaly_unique_id: bool = True,
+    is_atari: bool = False
 ) -> gym.Env:
-    raw_env: GridEngine = gym.make(base_env_id,
-                                   render_mode=render_mode,
-                                   agentPOV=base_env_pov,
-                                   simple_obs=use_simple_obs,
-                                   use_globaly_unique_id=use_globaly_unique_id
-                                   ) # type: ignore
-
+    if (not is_atari):
+        raw_env: GridEngine = gym.make(base_env_id,
+                                    render_mode=render_mode,
+                                    agentPOV=base_env_pov,
+                                    simple_obs=use_simple_obs,
+                                    use_globaly_unique_id=use_globaly_unique_id
+                                    ) # type: ignore
+    else:
+        raw_env = gym.make(base_env_id, render_mode="rgb_array") # type: ignore
 
     unified_count_model = UnifiedCountModel(raw_env.observation_space.shape[0] ** 2, # type: ignore
                                             clip_range=0,

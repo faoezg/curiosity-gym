@@ -13,7 +13,7 @@ EVAL_EPISODES = 3
 
 pov = "local_2"
 render_mode = "rgb_array" 
-env = DistractiveEnv(agentPOV=pov,render_mode=render_mode)
+env = SparseEnv(agentPOV=pov,render_mode=render_mode)
 video_env = env = gym.wrappers.RecordVideo(env, f"videos/im_dsg/1", episode_trigger=lambda x: x % 10 == 0)
 state_dim = env.observation_space.shape[0] # type: ignore
 value_model = ValueModel(state_dim=state_dim, device=DEVICE)

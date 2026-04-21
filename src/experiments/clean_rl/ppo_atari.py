@@ -1,4 +1,4 @@
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppopy
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_ataripy
 import os
 import random
 import time
@@ -12,6 +12,14 @@ import torch.optim as optim
 import tyro
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
+
+from .atari_wrappers import (  # isort:skip
+    ClipRewardEnv,
+    EpisodicLifeEnv,
+    FireResetEnv,
+    MaxAndSkipEnv,
+    NoopResetEnv,
+)
 
 
 @dataclass
@@ -34,14 +42,14 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "CartPole-v1"
+    env_id: str = "BreakoutNoFrameskip-v4"
     env: gym.Env = None
     """the id of the environment"""
-    total_timesteps: int = 500000
+    total_timesteps: int = 10000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 4
+    num_envs: int = 8
     """the number of parallel game environments"""
     num_steps: int = 128
     """the number of steps to run in each environment per policy rollout"""
@@ -57,7 +65,7 @@ class Args:
     """the K epochs to update the policy"""
     norm_adv: bool = True
     """Toggles advantages normalization"""
-    clip_coef: float = 0.2
+    clip_coef: float = 0.1
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
@@ -83,42 +91,42 @@ def make_env(env_id, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
             env = gym.make(env_id, render_mode="rgb_array")
-            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}", episode_trigger=lambda x: x % 50 == 0)
+            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         else:
             env = gym.make(env_id)
-        
-        if isinstance(env.observation_space, gym.spaces.Box):
-            env = gym.wrappers.TransformObservation(
-                env,
-                lambda obs: np.asarray(obs, dtype=np.int64),
-                observation_space=env.observation_space,
-            )
         env = gym.wrappers.RecordEpisodeStatistics(env)
+        env = NoopResetEnv(env, noop_max=30)
+        env = MaxAndSkipEnv(env, skip=4)
+        env = EpisodicLifeEnv(env)
+        if "FIRE" in env.unwrapped.get_action_meanings():
+            env = FireResetEnv(env)
+        env = ClipRewardEnv(env)
+        env = gym.wrappers.ResizeObservation(env, (84, 84))
+        env = gym.wrappers.GrayscaleObservation(env)
+        env = gym.wrappers.FrameStackObservation(env, 4)
         return env
 
     return thunk
 
-def make_env_from_env(env, idx, capture_video, run_name):
+def make_env_from_env(raw_env, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
-            new_env = gym.wrappers.RecordVideo(env, f"videos/{run_name}", episode_trigger=lambda x: x % 50 == 0)
+            new_env = gym.wrappers.RecordVideo(raw_env, f"videos/{run_name}")
         else:
-            new_env = env
-
-        if isinstance(new_env.observation_space, gym.spaces.Box):
-            new_env = gym.wrappers.TransformObservation(
-                new_env,
-                lambda obs: np.asarray(obs, dtype=np.int64),
-                observation_space=env.observation_space,
-            )
-
+            new_env = raw_env
         new_env = gym.wrappers.RecordEpisodeStatistics(new_env)
+        new_env = NoopResetEnv(new_env, noop_max=30)
+        new_env = MaxAndSkipEnv(new_env, skip=4)
+        new_env = EpisodicLifeEnv(new_env)
+        if "FIRE" in new_env.unwrapped.get_action_meanings():
+            new_env = FireResetEnv(new_env)
+        new_env = ClipRewardEnv(new_env)
+        new_env = gym.wrappers.ResizeObservation(new_env, (84, 84))
+        new_env = gym.wrappers.GrayscaleObservation(new_env)
+        new_env = gym.wrappers.FrameStackObservation(new_env, 4)
         return new_env
 
     return thunk
-
-
-
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
@@ -129,34 +137,34 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
-        self.critic = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
-            nn.Tanh(),
-            layer_init(nn.Linear(64, 64)),
-            nn.Tanh(),
-            layer_init(nn.Linear(64, 1), std=1.0),
+        self.network = nn.Sequential(
+            layer_init(nn.Conv2d(4, 32, 8, stride=4)),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(32, 64, 4, stride=2)),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(64, 64, 3, stride=1)),
+            nn.ReLU(),
+            nn.Flatten(),
+            layer_init(nn.Linear(64 * 7 * 7, 512)),
+            nn.ReLU(),
         )
-        self.actor = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
-            nn.Tanh(),
-            layer_init(nn.Linear(64, 64)),
-            nn.Tanh(),
-            layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01),
-        )
+        self.actor = layer_init(nn.Linear(512, envs.single_action_space.n), std=0.01)
+        self.critic = layer_init(nn.Linear(512, 1), std=1)
 
     def get_value(self, x):
-        return self.critic(x)
+        return self.critic(self.network(x / 255.0))
 
     def get_action_and_value(self, x, action=None):
-        logits = self.actor(x)
+        hidden = self.network(x / 255.0)
+        logits = self.actor(hidden)
         probs = Categorical(logits=logits)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy(), self.critic(x)
+        return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
 
 
-def run_clean_rl_ppo_model(config: Args):
-    args = config
+def run_clean_rl_ppo_atari_model(config: Args):
+    args = config 
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
@@ -196,7 +204,6 @@ def run_clean_rl_ppo_model(config: Args):
         envs = gym.vector.SyncVectorEnv(
             [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)],
         )
-    
     
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 

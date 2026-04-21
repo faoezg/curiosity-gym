@@ -45,3 +45,23 @@ gym.register(
         "max_episodes": 500 
     }
 )
+
+gym.register(
+    id="Montezuma-CoinFlip",
+    entry_point="experiments.coin_flip.coin_flip_factory:make_coin_flip_env",
+    kwargs={
+        "base_env_id":"ALE/MontezumaRevenge-v5",
+        "max_episodes": 500,
+        "is_atari": True
+    }
+)
+
+gym.register(
+    id="MountainCar-CoinFlip",
+    entry_point="experiments.coin_flip.coin_flip_factory:make_coin_flip_env",
+    kwargs={
+        "base_env_id":"MountainCar-v0",
+        "max_episodes": 500,
+        "is_atari": True
+    }
+)

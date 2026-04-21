@@ -27,7 +27,10 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         self.buffer = ReplayBuffer(size=self.intrinsic_model.byol_network.time_horizon + 1)
 
     def step(self, action):
-        state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action)
+        if (isinstance(self.env, GridEngine)):
+            state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action)
+        else:
+            state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
 
         transition = Transition(self.prev_state, action, extrinsic_reward, state) # type: ignore
         self.buffer.add(transition)
@@ -37,11 +40,9 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
             # This is fine as the buffer only every has one trajecotry. Thus o_t+1 is the latest in the buffer
             # Therefore, if the sample the entire buffer the loss should be correctly associated this the current transition
             intrinsic_reward, byol_loss = self.intrinsic_model.calc_intrinsic_reward(state_buffer, action_buffer)
-            self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state)
-            if (intrinsic_reward > 0.3): # TODO MAKE INTO FIELD + CONST?
-                reward = extrinsic_reward + intrinsic_reward # type: ignore
-            else:
-                reward = extrinsic_reward
+            if (isinstance(self.env, GridEngine)):
+                self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state)
+            reward = extrinsic_reward + intrinsic_reward # type: ignore
 
             self.intrinsic_model._train_network(byol_loss)
         else:

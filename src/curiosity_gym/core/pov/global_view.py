@@ -6,6 +6,7 @@ from gymnasium import spaces
 from curiosity_gym.core.objects import Agent
 from curiosity_gym.core.objects import Agent, GridObject
 from curiosity_gym.utils.constants import IX_TO_COLOR
+from curiosity_gym.utils.enums import Action
 
 class GlobalView(AgentPOV):
     """Agent point-of-view observing the full state of the environment.
@@ -22,7 +23,7 @@ class GlobalView(AgentPOV):
                  simple_observation_space: bool = True,
                  individual_obj_ids: bool = True
                  ) -> None:
-        action_space = spaces.Discrete(4)
+        action_space = spaces.Discrete(len(Action))
         number_of_nodes = env_size[0] * env_size[1]
         if (not individual_obj_ids):
             obj_id_count = len(GridObject.id_map.keys())

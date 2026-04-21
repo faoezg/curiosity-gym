@@ -43,3 +43,13 @@ gym.register(
         "base_env_id":"DerailmentEnv"
     }
 )
+
+gym.register(
+    id="MountainCar-Icm",
+    entry_point="experiments.icm.icm_factory:make_icm_env",
+    kwargs={
+        "base_env_id":"MountainCar-v0",
+        "max_episodes": 500,
+        "is_atari": True
+    }
+)
