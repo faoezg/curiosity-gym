@@ -42,7 +42,7 @@ def make_icm_env(
             hidden_dim=256,
             beta=.2,
             eta=500,
-            icm_lr=5e-6
+            #icm_lr=1e-6
         )
 
     return ICMCuriosityWrapper(device,

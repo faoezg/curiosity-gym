@@ -73,10 +73,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         intrinsic_reward = self._get_intrinsic_reward_from_model(state=state, action=action)
         if (isinstance(self.env, GridEngine)):
             self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state) # type: ignore
-        if (intrinsic_reward > 0.1):
-            reward = extrinsic_reward + intrinsic_reward # type: ignore
-        else:
-            reward = extrinsic_reward
+        reward = extrinsic_reward + intrinsic_reward # type: ignore
 
         info["extrinsic_reward"] = extrinsic_reward
         info["intrinsic_reward"] = intrinsic_reward
@@ -87,7 +84,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
 
         self.total_reward += reward
 
-        print(info)
+        #print(info)
 
 
         self.prev_state = state

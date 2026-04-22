@@ -36,6 +36,8 @@ class ICMModel(IntrinsicMotivationModel):
         super().__init__()
         self.icm_network = ICMNetwork(device, state_dim, action_dim, latent_rep_dim, hidden_dim, beta, eta).to(device)
         self.optimizer = torch.optim.Adam(self.icm_network.parameters(), lr=icm_lr)
+        self.action_dim = action_dim
+        self.device = device
 
     def calc_intrinsic_reward(self, state, next_state, action) -> float:
         """
@@ -57,7 +59,8 @@ class ICMModel(IntrinsicMotivationModel):
     
     def calc_icm_loss(self, state: torch.Tensor, next_state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         _, phi_next, forward_pred, inv_logits = self.icm_network.forward(state, next_state, action)
-        inv_loss = F.cross_entropy(inv_logits, action, reduction="mean")
+        action_one_hot = F.one_hot(action, self.action_dim).to(torch.float32).to(self.device)
+        inv_loss = F.cross_entropy(inv_logits, action_one_hot, reduction="mean")
         forward_loss = self.calc_forward_loss(forward_pred, phi_next)
         return inv_loss, forward_loss
     

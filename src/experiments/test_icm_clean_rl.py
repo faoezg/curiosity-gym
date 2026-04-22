@@ -14,8 +14,8 @@ print("Running own models on: ", DEVICE)
 
 
 def train_clean_rl_model() -> None:
-    #env_name = "SparseEnv-Icm"
-    env_name = "MountainCar-Icm"
+    env_name = "SparseEnv-Icm"
+    #env_name = "MountainCar-Icm"
     env = gym.make(env_name,
                    max_episodes=1,
                    max_training_steps=1,

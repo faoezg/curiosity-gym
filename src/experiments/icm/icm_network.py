@@ -77,7 +77,7 @@ class ICMNetwork(nn.Module):
 
     def _pass_through_inverse_model(self, state, next_state):
         inv_input = torch.cat([state, next_state], dim=1) # Dim (Batch, 2 * state-space)
-        inv_logits = self.invers_model(inv_input)         # Dim (Batch, state-space)
+        inv_logits = self.invers_model(inv_input)         # Dim (Batch, action-space)
         return inv_logits
 
     def _create_encoder_model(self, state_dim, hidden_dim, latent_rep_dim) -> nn.Sequential:
@@ -112,5 +112,6 @@ class ICMNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, action_dim)
+            nn.Linear(hidden_dim, action_dim),
+            nn.Softmax()
         )
