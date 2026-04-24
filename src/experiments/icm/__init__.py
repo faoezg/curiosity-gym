@@ -9,14 +9,30 @@ gym.register(
     entry_point="experiments.icm.icm_factory:make_icm_env",
     kwargs={
         "base_env_id":"SparseEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
     }
 )
+
+gym.register(
+    id="SimpleSparseEnv-Icm",
+    entry_point="experiments.icm.icm_factory:make_icm_env",
+    kwargs={
+        "base_env_id":"SimpleSparseEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
+    }
+)
+
+
 
 gym.register(
     id="DistractiveEnv-Icm",
     entry_point="experiments.icm.icm_factory:make_icm_env",
     kwargs={
         "base_env_id":"DistractiveEnv",
+        "max_episodes": 10000,
+        "max_training_steps": 500_000
     }
 )
 
@@ -24,7 +40,9 @@ gym.register(
     id="MultitaskEnv-Icm",
     entry_point="experiments.icm.icm_factory:make_icm_env",
     kwargs={
-        "base_env_id":"MultitaskEnv"
+        "base_env_id":"MultitaskEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
     }
 )
 
@@ -49,6 +67,16 @@ gym.register(
     entry_point="experiments.icm.icm_factory:make_icm_env",
     kwargs={
         "base_env_id":"MountainCar-v0",
+        "max_episodes": 500,
+        "is_atari": True
+    }
+)
+
+gym.register(
+    id="CartPole-Icm",
+    entry_point="experiments.icm.icm_factory:make_icm_env",
+    kwargs={
+        "base_env_id":"CartPole-v1",
         "max_episodes": 500,
         "is_atari": True
     }

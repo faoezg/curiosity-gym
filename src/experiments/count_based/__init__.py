@@ -5,6 +5,18 @@ gym.register(
     entry_point="experiments.count_based.unified_count_factory:make_unified_count_env",
     kwargs={
         "base_env_id":"SparseEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
+    }
+)
+
+gym.register(
+    id="SimpleSparseEnv-UnifiedCount",
+    entry_point="experiments.count_based.unified_count_factory:make_unified_count_env",
+    kwargs={
+        "base_env_id":"SimpleSparseEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
     }
 )
 
@@ -13,6 +25,8 @@ gym.register(
     entry_point="experiments.count_based.unified_count_factory:make_unified_count_env",
     kwargs={
         "base_env_id":"DistractiveEnv",
+        "max_episodes": 10000,
+        "max_training_steps": 500_000
     }
 )
 
@@ -20,7 +34,10 @@ gym.register(
     id="MultitaskEnv-UnifiedCount",
     entry_point="experiments.count_based.unified_count_factory:make_unified_count_env",
     kwargs={
-        "base_env_id":"MultitaskEnv"
+        "base_env_id":"MultitaskEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
+ 
     }
 )
 

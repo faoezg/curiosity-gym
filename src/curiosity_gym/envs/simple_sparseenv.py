@@ -15,7 +15,7 @@ from curiosity_gym.utils.dataclasses import (
 )
 
 
-class SparseEnv(GridEngine):
+class SimpleSparseEnv(GridEngine):
     """Defines the structure of the curiosity-gym sparse reward environment.\n
     The environment consists of five rooms connected by four locked
     :class:`~curiosity_gym.core.objects.Door` objects. It also contains multiple
@@ -87,13 +87,10 @@ class SparseEnv(GridEngine):
                 # Room 3:
                 Key((11, 8), color=5),
                 Door((8, 6), state=2, color=5),
-                Enemy((10, 9), state=1, reach=4),
                 # Room 4:
                 Key((5, 6), color=6),
                 Door((4, 8), state=2, color=6),
                 RandomBlock((6, 6)),
-                # Room 5:
-                Enemy((1, 5), state=0, reach=2),
             ]
         )
 
@@ -105,7 +102,7 @@ class SparseEnv(GridEngine):
         )
 
         super().__init__(
-            env_name = "sparse_environment",
+            env_name = "simple_sparse_environment",
             env_settings=env_settings,
             render_settings=render_settings,
             env_objects=env_objects,

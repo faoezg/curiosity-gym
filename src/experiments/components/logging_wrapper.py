@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 class LoggingWrapper(gym.Wrapper):
     def __init__(self, env: GridEngine, training_steps: int, training_episodes: int):
         super().__init__(env)
-        self.env: GridEngine = self.env
+        self.env: GridEngine = self.env.unwrapped
         self.max_episodes = training_episodes
         self.max_training_steps = training_steps
         self.training_step = 0
@@ -16,7 +16,7 @@ class LoggingWrapper(gym.Wrapper):
     @override
     def step(self, action):
         self.training_step += 1
-        print("Training Step:", self.training_step)
+        #print("Training Step:", self.training_step)
         return super().step(action)
 
     @override

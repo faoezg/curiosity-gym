@@ -8,10 +8,10 @@ from .unified_count_reward_wrapper import UnifiedCountWrapper
 def make_unified_count_env(
     *,
     base_env_id: str = "SparseEnv",
-    base_env_pov: str = "global",
+    base_env_pov: str = "local_2",
     device: str = "cpu",
     render_mode: str | None = None,
-    max_episodes: int = 1,
+    max_episodes: int = 10000,
     max_training_steps: int = 500,
     use_simple_obs: bool = True,
     use_globaly_unique_id: bool = True,
@@ -29,13 +29,14 @@ def make_unified_count_env(
 
     unified_count_model = UnifiedCountModel(raw_env.observation_space.shape[0] ** 2, # type: ignore
                                             clip_range=0,
-                                            eps=0.5,
-                                            beta=5
-                                            )
-
-    return UnifiedCountWrapper(
+                                            eps=0.5)
+    new_env = UnifiedCountWrapper(
         env=raw_env,
         count_model=unified_count_model,
         device=torch.device(device),
         max_training_steps=max_training_steps,
         max_episodes=max_episodes)
+
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 1000 == 0)
+
+    return new_env

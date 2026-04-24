@@ -10,7 +10,7 @@ from .byol_wrapper import ByolExploreWrapper
 def make_byol_env(
     *,
     base_env_id: str = "SparseEnv",
-    base_env_pov: str = "global",
+    base_env_pov: str = "local_2",
     device: str = "cpu",
     lambda_byol: float = 5.0,
     reward_norm_decay: float = 0.99,
@@ -48,10 +48,15 @@ def make_byol_env(
                             reward_norm_decay=reward_norm_decay)
 
 
-    return ByolExploreWrapper(
+
+    new_env = ByolExploreWrapper(
         env=raw_env,
         byol_explore_model=byol_model,
         device=torch.device(device),
         max_episodes=max_episodes,
         max_training_steps=max_training_steps
     )
+
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 100 == 0)
+
+    return new_env

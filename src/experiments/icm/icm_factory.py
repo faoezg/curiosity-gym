@@ -9,7 +9,7 @@ from .icm_wrapper import ICMCuriosityWrapper
 def make_icm_env(
     *,
     base_env_id: str = "SparseEnv",
-    base_env_pov: str = "global",
+    base_env_pov: str = "local_2",
     device: str = "cpu",
     latent_rep_dim: int = 32,
     hidden_dim: int = 64,
@@ -38,17 +38,20 @@ def make_icm_env(
             device = device,
             state_dim=raw_env.observation_space.shape[0], # type: ignore
             action_dim=raw_env.action_space.n, # type: ignore
-            latent_rep_dim=128,
-            hidden_dim=256,
-            beta=.2,
+            latent_rep_dim=512,
+            hidden_dim=1024,
+            beta=.8,
             eta=500,
-            #icm_lr=1e-6
+            icm_lr=5e-6
         )
-
-    return ICMCuriosityWrapper(device,
+    new_env = ICMCuriosityWrapper(device,
                                raw_env,
                                icm,
                                intrinsic_reset_threshold,
                                allow_global_state_reset,
                                max_training_steps=max_training_steps,
                                max_episodes=max_episodes)
+
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 50 == 0)
+
+    return new_env

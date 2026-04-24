@@ -10,6 +10,18 @@ gym.register(
     entry_point="experiments.coin_flip.coin_flip_factory:make_coin_flip_env",
     kwargs={
         "base_env_id":"SparseEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
+    }
+)
+
+gym.register(
+    id="SimpleSparseEnv-CoinFlip",
+    entry_point="experiments.coin_flip.coin_flip_factory:make_coin_flip_env",
+    kwargs={
+        "base_env_id":"SimpleSparseEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
     }
 )
 
@@ -18,6 +30,8 @@ gym.register(
     entry_point="experiments.coin_flip.coin_flip_factory:make_coin_flip_env",
     kwargs={
         "base_env_id":"DistractiveEnv",
+        "max_episodes": 10000,
+        "max_training_steps": 500_000
     }
 )
 
@@ -25,7 +39,9 @@ gym.register(
     id="MultitaskEnv-CoinFlip",
     entry_point="experiments.coin_flip.coin_flip_factory:make_coin_flip_env",
     kwargs={
-        "base_env_id":"MultitaskEnv"
+        "base_env_id":"MultitaskEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
     }
 )
 

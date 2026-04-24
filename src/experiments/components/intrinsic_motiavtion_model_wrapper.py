@@ -4,7 +4,8 @@ import gymnasium as gym
 from torch import device
 import random
 import matplotlib.pyplot as plt
-from collections import defaultdict
+from collections import defaultdict, deque
+import numpy as np
 
 from curiosity_gym.core.gridengine import GridEngine
 from curiosity_gym.utils.enums import Action, Rotation
@@ -24,7 +25,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                  max_training_steps: int = 500,
                  max_episodes: int = 1000) -> None:
         super().__init__(env)
-        self.env: GridEngine | gym.Env = self.env # getting ride of bad type hint as casting isn't a real thing in python
+        self.env: GridEngine | gym.Env = self.env.unwrapped # getting ride of bad type hint as casting isn't a real thing in python
         self.intrinsic_model = intrinsic_model
         self.device = device
 
@@ -36,24 +37,31 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.max_training_steps = max_training_steps
         self.max_episodes = max_episodes
         self.training_step = 0
+        self.total_training_step = 0
         self.episode_count = -1 # given inital reset
         self.absolute_episode_count = -1 
 
         self.state_space_visited = defaultdict(int)
-        self.total_reward = 0
+        self.total_extrinsic_reward = 0
+        self.total_episode_extrinsic_reward = 0
+        self.total_episode_intrinsic_reward = 0
+        self.last_n_extrinsic_rewards = deque(maxlen=10)
+        self.last_n_intrinsic_rewards = deque(maxlen=10)
 
     def reset(self, **kwargs):
-        self.training_step = 0
         self.episode_count += 1
         self.absolute_episode_count += 1
+        self.last_n_extrinsic_rewards.append(self.total_episode_extrinsic_reward)
+        self.last_n_intrinsic_rewards.append(self.total_episode_intrinsic_reward)
 
         print("Current Episode: ", self.episode_count)
 
         if not self.allow_global_state_reset or self.last_best_global_state is None:
             obs, info = self.env.reset(**kwargs)
-        elif (isinstance(self.env, GridEngine)):
+        else:
             obs, info = self.env.reset_to_specific_global_state(self.last_best_global_state, **kwargs)
 
+        if (isinstance(self.env, GridEngine)):
             is_trainig_done = self.episode_count >= self.max_episodes or self.training_step >= self.max_training_steps
             if (is_trainig_done and self.absolute_episode_count % 50 == 0):
                 # TODO THINK ABOUT BYOL
@@ -61,7 +69,11 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                 if (not isinstance(self.intrinsic_model, ByolExploreModel)):
                     self.print_intrinsic_heatmap()
                 self._save_environment_heatmaps()
-            
+                self._calc_stats()
+
+        self.total_episode_extrinsic_reward = 0
+        self.total_episode_intrinsic_reward = 0
+       
         self.prev_state = obs # type: ignore
         return obs, info # type: ignore
 
@@ -76,19 +88,20 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         reward = extrinsic_reward + intrinsic_reward # type: ignore
 
         info["extrinsic_reward"] = extrinsic_reward
+        self.total_episode_extrinsic_reward += extrinsic_reward # type: ignore
         info["intrinsic_reward"] = intrinsic_reward
+        self.total_episode_intrinsic_reward += intrinsic_reward
         info["total_reward"] = reward 
 
         if (isinstance(self.env, GridEngine)):
             self.state_space_visited[self.env.objects.agent.position.tobytes()] = 1
 
-        self.total_reward += reward
-
-        #print(info)
+        self.total_extrinsic_reward += extrinsic_reward # type: ignore
 
 
         self.prev_state = state
         self.training_step += 1
+        self.total_training_step += 1
 
         return state, reward, terminated, truncated, info
     
@@ -139,10 +152,13 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                 obs = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation) # type: ignore
                 random_action = random.choice(action_list)
                 intrinsic_reward = self._get_intrinsic_reward_from_model_no_training(state=obs, action=random_action)
-                cor_intrinsic_reward += intrinsic_reward
-            intrinsic_reward = cor_intrinsic_reward / 4
-            total_reward += intrinsic_reward
-            intrinsic_map[cor] += intrinsic_reward
+                #cor_intrinsic_reward += intrinsic_reward
+                cor_intrinsic_reward = min(intrinsic_reward, cor_intrinsic_reward) if cor_intrinsic_reward > 0 else intrinsic_reward
+            #intrinsic_reward = cor_intrinsic_reward / len(rotation_list)
+            #total_reward += intrinsic_reward
+            #intrinsic_map[cor] += intrinsic_reward
+            total_reward += cor_intrinsic_reward 
+            intrinsic_map[cor] += cor_intrinsic_reward
 
         if (total_reward > 0):
             for cor, value in intrinsic_map.items():
@@ -159,10 +175,10 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             raw_figure = self.env.heatmap_from_data(map)
             overlay_figure = self.env.overlay_heatmap_from_data(map)
             if (raw_figure is not None):
-                raw_figure.savefig(file_path)
+                raw_figure.savefig(file_path, transparent=True)
                 raw_figure.clear()
             if (overlay_figure is not None):
-                overlay_figure.savefig(overlay_file_path)
+                overlay_figure.savefig(overlay_file_path, transparent=True)
                 overlay_figure.clear()
             else:
                 # TODO make proper error?
@@ -176,13 +192,29 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         figure = self.env.heatmap()
         overlay_figure = self.env.overlay_heatmap()
         if (figure is not None):
-            figure.savefig(file_path)
+            figure.savefig(file_path, transparent=True)
             figure.clear()
         if (overlay_figure is not None):
-            overlay_figure.savefig(overlay_file_path)
+            overlay_figure.savefig(overlay_file_path, transparent=True)
             overlay_figure.clear()
         else:
             # TODO make proper error?
             print("Exporting Heatmaps failed, as no figure was able to be created")
 
         plt.close()
+    
+    def _calc_stats(self):
+        walkable_cords = self.env.get_every_wakable_cor()
+        total_visited_states = 0
+        for cord in walkable_cords:
+            total_visited_states += self.state_space_visited[np.array(cord).tobytes()]
+        lower_bound_visited_state_space = total_visited_states / len(walkable_cords)
+        avg_extrinsic_reward = self.total_extrinsic_reward / self.training_step
+        avg_extrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_extrinsic_rewards])
+        avg_intrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_intrinsic_rewards])
+
+        print("############# STATS ################")
+        print(f"Lower Bound of visited Statespace: {lower_bound_visited_state_space}")
+        print(f"Avg. ext. Reward over all Trainingsteps: {avg_extrinsic_reward}")
+        print(f"Avg. ext. Reward over last 10 Episodes: {avg_extrinsic_reward_last_10_episodes}")
+        print(f"Avg. intr. Reward over last 10 Episodes: {avg_intrinsic_reward_last_10_episodes}")

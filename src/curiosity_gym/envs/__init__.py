@@ -9,6 +9,14 @@ gym.register(
 )
 
 gym.register(
+    id="SimpleSparseEnv",
+    entry_point="curiosity_gym.envs.simple_sparseenv:SimpleSparseEnv", 
+    kwargs={
+        "render_mode": "rgb_array"
+    }
+)
+
+gym.register(
     id="DistractiveEnv",
     entry_point="curiosity_gym.envs.distractiveenv:DistractiveEnv",
     kwargs={

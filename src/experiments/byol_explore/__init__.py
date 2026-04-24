@@ -5,6 +5,18 @@ gym.register(
     entry_point="experiments.byol_explore.byol_gym_factory:make_byol_env",
     kwargs={
         "base_env_id":"SparseEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
+    }
+)
+
+gym.register(
+    id="SimpleSparseEnv-ByolExplore",
+    entry_point="experiments.byol_explore.byol_gym_factory:make_byol_env",
+    kwargs={
+        "base_env_id":"SimpleSparseEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
     }
 )
 
@@ -13,7 +25,8 @@ gym.register(
     entry_point="experiments.byol_explore.byol_gym_factory:make_byol_env",
     kwargs={
         "base_env_id":"DistractiveEnv",
-        "time_horizon":10
+        "max_episodes": 10000,
+        "max_training_steps": 500_000
     }
 )
 
@@ -21,7 +34,9 @@ gym.register(
     id="MultitaskEnv-ByolExplore",
     entry_point="experiments.byol_explore.byol_gym_factory:make_byol_env",
     kwargs={
-        "base_env_id":"MultitaskEnv"
+        "base_env_id":"MultitaskEnv",
+        "max_episodes": 1000,
+        "max_training_steps": 500_000
     }
 )
 

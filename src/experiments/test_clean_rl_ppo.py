@@ -18,7 +18,7 @@ print("Running own models on: ", DEVICE)
 
 
 def train_clean_rl_model() -> None:
-    env_name = "DistractiveEnv-Experiment"
+    env_name = "SparseEnv-Experiment"
     env = gym.make(env_name,
                    max_episodes=10000,
                    max_training_steps=1,
@@ -36,4 +36,21 @@ def train_clean_rl_model() -> None:
     )
     run_clean_rl_ppo_model(args)
 
-train_clean_rl_model()
+#train_clean_rl_model()
+
+from stable_baselines3 import PPO
+from stable_baselines3.common.env_util import make_vec_env
+
+
+def tmp():
+    vec_env =  make_vec_env("SimpleSparseEnv-Experiment", n_envs=1)
+    model = PPO("MlpPolicy", vec_env, verbose=1, device="cpu")
+    model.learn(total_timesteps=500_000)
+
+    obs = vec_env.reset()
+    while True:
+        action, _states = model.predict(obs)
+        obs, _, _, _ = vec_env.step(action)
+        vec_env.render("human")
+
+tmp()

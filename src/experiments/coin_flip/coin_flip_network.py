@@ -52,7 +52,7 @@ class CoinFlipNetwork(nn.Module):
 
         final_coin_flip_preds = coin_flip_preds #+ coin_flip_priors
 
-        pseudo_count = (1/self.d_dim) * (abs(final_coin_flip_preds).sum() ** 2)
+        pseudo_count = (1/self.d_dim) * (final_coin_flip_preds.mean() ** 2)
 
         one_over_counts = 10 * pseudo_count ** 0.5 # inverse of pseudo-count
 

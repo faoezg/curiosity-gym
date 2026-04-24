@@ -8,11 +8,11 @@ from .coin_flip_wrapper import CoinFlipWrapper
 def make_coin_flip_env(
     *,
     base_env_id: str = "SparseEnv",
-    base_env_pov: str = "global",
+    base_env_pov: str = "local_2",
     device: str = "cpu",
     reward_scale: float = 0.01,
     hidden_dim: int = 300,
-    d_dim: int = 100,
+    d_dim: int = 20,
     priority_alpha: float = 0.5,
     render_mode: str | None = None,
     max_episodes: int = 5000,
@@ -41,9 +41,13 @@ def make_coin_flip_env(
                         reward_scale=reward_scale,
                         device=device)
 
-    return CoinFlipWrapper(
+    new_env = CoinFlipWrapper(
         env=raw_env,
         cfm=cfm,
         device=torch.device(device),
         max_training_steps=max_training_steps,
         max_episodes=max_episodes)
+
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 100 == 0)
+
+    return new_env
