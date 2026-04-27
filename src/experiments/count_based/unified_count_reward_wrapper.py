@@ -25,6 +25,10 @@ class UnifiedCountWrapper(IntrinsicMotivationModelWrapper):
                          max_episodes)
         self.intrinsic_model: UnifiedCountModel = self.intrinsic_model
 
+    def reset(self, **kwargs):
+        self.intrinsic_model.reset()
+        return super().reset(**kwargs)
+
     def _get_intrinsic_reward_from_model(self, state, action):
         intrinsic_reward = self.intrinsic_model.calc_intrinsic_reward(state)
         self.intrinsic_model._train_network(state)

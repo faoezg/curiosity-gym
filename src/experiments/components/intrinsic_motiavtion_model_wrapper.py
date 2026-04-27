@@ -8,6 +8,7 @@ from collections import defaultdict, deque
 import numpy as np
 
 from curiosity_gym.core.gridengine import GridEngine
+from curiosity_gym.envs.multitaskenv import MultitaskEnv
 from curiosity_gym.utils.enums import Action, Rotation
 from curiosity_gym.core.objects import Key
 
@@ -47,6 +48,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.total_episode_intrinsic_reward = 0
         self.last_n_extrinsic_rewards = deque(maxlen=10)
         self.last_n_intrinsic_rewards = deque(maxlen=10)
+        self.last_n_extrinsic_rewards_before_task_switch = None
 
     def reset(self, **kwargs):
         self.episode_count += 1
@@ -73,6 +75,12 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
 
         self.total_episode_extrinsic_reward = 0
         self.total_episode_intrinsic_reward = 0
+
+        if (isinstance(self.env, MultitaskEnv) and self.absolute_episode_count >= self.max_episodes * 0.56 and self.env.task == 1): # should be after 280.000 trainin steps
+            self.last_n_extrinsic_rewards_before_task_switch = self.last_n_extrinsic_rewards.copy()
+            self.env.task = 2 # switch task during training to see adaptation
+            print("SWITCHED TASK")
+
        
         self.prev_state = obs # type: ignore
         return obs, info # type: ignore
@@ -210,11 +218,14 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             total_visited_states += self.state_space_visited[np.array(cord).tobytes()]
         lower_bound_visited_state_space = total_visited_states / len(walkable_cords)
         avg_extrinsic_reward = self.total_extrinsic_reward / self.training_step
-        avg_extrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_extrinsic_rewards])
-        avg_intrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_intrinsic_rewards])
+        avg_extrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_extrinsic_rewards]) / len(self.last_n_extrinsic_rewards)
+        avg_intrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_intrinsic_rewards]) / len(self.last_n_intrinsic_rewards)
 
         print("############# STATS ################")
         print(f"Lower Bound of visited Statespace: {lower_bound_visited_state_space}")
         print(f"Avg. ext. Reward over all Trainingsteps: {avg_extrinsic_reward}")
         print(f"Avg. ext. Reward over last 10 Episodes: {avg_extrinsic_reward_last_10_episodes}")
         print(f"Avg. intr. Reward over last 10 Episodes: {avg_intrinsic_reward_last_10_episodes}")
+        if (self.last_n_extrinsic_rewards_before_task_switch is not None):
+            avg_extrinsic_reward_last_10_episodes_before_switch = sum([reward for reward in self.last_n_extrinsic_rewards_before_task_switch]) / len(self.last_n_extrinsic_rewards_before_task_switch)
+            print(f"Avg. ext. Reward over last 10 Episodes before Task switch: {avg_extrinsic_reward_last_10_episodes_before_switch}")

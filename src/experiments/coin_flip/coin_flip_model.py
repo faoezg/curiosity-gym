@@ -4,7 +4,7 @@ from torch import device, optim
 from .coin_flip_network import CoinFlipNetwork
 from .buffer import CFNTransition
 from .rademacher_generator import RademacherDistGenerator
-from experiments.components import PriorityReplayBuffer, IntrinsicMotivationModel
+from experiments.components import PriorityReplayBuffer, IntrinsicMotivationModel, RewardNormalizer
 from curiosity_gym.utils.enums import Action
 import numpy as np
 
@@ -13,13 +13,13 @@ class CoinFlipModel(IntrinsicMotivationModel):
                  state_dim: int,
                  hidden_dim: int = 32,
                  d_dim: int = 10,
-                 reward_scale: float = 0.01,
-                 batch_size: int = 32,
-                 buffer_size: int = 64,
-                 min_req_buffer_population: int = 16,
+                 reward_scale: float = 0.8, # set it high, as extrnsic is sparse in experiments
+                 batch_size: int = 1000,
+                 buffer_size: int = 10000,
+                 min_req_buffer_population: int = 1000,
                  priority_alpha: float = 0.5,
                  update_period: int = 1,
-                 p_replace: float = 0.5,
+                 p_replace: float = 1.0,
                  device: device | str = "cuda" if torch.cuda.is_available() else "cpu"
                  ) -> None:
         self.device = device
@@ -30,12 +30,14 @@ class CoinFlipModel(IntrinsicMotivationModel):
         self.reward_scale = reward_scale
 
         self.coin_flip_network = CoinFlipNetwork(state_dim, hidden_dim, d_dim).to(device)
-        self.optimizer = optim.Adam(params=self.coin_flip_network.parameters(), lr=0.001)
+        self.optimizer = optim.Adam(params=self.coin_flip_network.parameters(), lr=0.0001)
         self.rademacher_generator = RademacherDistGenerator(d_dim, p_replace)
         self.buffer = PriorityReplayBuffer(buffer_size, priority_alpha)
 
         self.step_count = 0
         self.num_updates = np.zeros(buffer_size, dtype=np.float32)
+
+        self.reward_normalizer = RewardNormalizer()
 
         self.reset()
 
@@ -71,10 +73,13 @@ class CoinFlipModel(IntrinsicMotivationModel):
         if (isBufferPopulatedEnough):
             with torch.no_grad():
                 _, _, _, one_over_counts = self.coin_flip_network(state_tensor)
-                intrinsic_reward_tensor = one_over_counts * self.reward_scale
+                intrinsic_reward_tensor = one_over_counts
                 intrinsic_reward = intrinsic_reward_tensor.squeeze().detach().item()
 
-        return intrinsic_reward
+                if with_training:
+                    self.reward_normalizer.normalize_reward(intrinsic_reward)
+
+        return intrinsic_reward * self.reward_scale
 
     
     def _train_network(self):
@@ -93,7 +98,7 @@ class CoinFlipModel(IntrinsicMotivationModel):
         coin_flip_preds, _, _, one_over_counts = self.coin_flip_network(state_batch)
 
         loss = nn.functional.mse_loss(coin_flip_preds, rademacher_sample_batch, reduction="none").mean()
-        #loss = (loss * weights_tensor.unsqueeze(1)).mean()
+        loss = (loss * weights_tensor.unsqueeze(1)).mean()
     
         self.optimizer.zero_grad()
         loss.backward()
@@ -103,8 +108,9 @@ class CoinFlipModel(IntrinsicMotivationModel):
     
     def _update_buffer_prioritise(self, one_over_counts_tensor, indicies):
         num_updates = self.num_updates[indicies]
-        one_over_counts = one_over_counts_tensor.squeeze().cpu().detach().numpy()
-        new_priorities = (self.priority_alpha / (num_updates + 1)) + (1 - self.priority_alpha) * one_over_counts
+        pseudo_counts_tensor = one_over_counts_tensor ** 2
+        pseudo_counts = pseudo_counts_tensor.squeeze().cpu().detach().numpy()
+        new_priorities = (self.priority_alpha / (num_updates + 1)) + (1 - self.priority_alpha) * pseudo_counts
         self.buffer.update_prioritites(indicies, new_priorities)
         self.num_updates[indicies] += 1
 
@@ -112,3 +118,4 @@ class CoinFlipModel(IntrinsicMotivationModel):
         self.prev_state = None
         self.step_count = 0
         self.rademacher_generator.reset()
+        self.reward_normalizer.reset()

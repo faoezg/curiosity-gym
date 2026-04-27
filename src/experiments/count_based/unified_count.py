@@ -2,7 +2,7 @@ from typing import override
 from collections import defaultdict
 import numpy as np
 
-from experiments.components import IntrinsicMotivationModel
+from experiments.components import IntrinsicMotivationModel, RewardNormalizer
 
 class UnifiedCountModel(IntrinsicMotivationModel):
     """
@@ -27,6 +27,8 @@ class UnifiedCountModel(IntrinsicMotivationModel):
         self.beta = beta
         self.eps = eps
         self.clip_range = clip_range
+
+        self.reward_normalizer = RewardNormalizer()
  
     @override
     def _train_network(self, state: np.ndarray) -> None:
@@ -77,4 +79,8 @@ class UnifiedCountModel(IntrinsicMotivationModel):
         if (intrinsic_reward <= self.clip_range):
             return 0.0
         else:
+            #return self.reward_normalizer.normalize_reward(intrinsic_reward)
             return intrinsic_reward
+    
+    def reset(self):
+        self.reward_normalizer.reset()

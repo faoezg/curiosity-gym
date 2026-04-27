@@ -50,10 +50,10 @@ class CoinFlipNetwork(nn.Module):
         with torch.no_grad():
             coin_flip_priors = self.frozen_prior_network(state)
 
-        final_coin_flip_preds = coin_flip_preds #+ coin_flip_priors
+        final_coin_flip_preds = coin_flip_preds + coin_flip_priors
 
-        pseudo_count = (1/self.d_dim) * (final_coin_flip_preds.mean() ** 2)
+        pseudo_count = (1/self.d_dim) * torch.mean(final_coin_flip_preds ** 2)
 
-        one_over_counts = 10 * pseudo_count ** 0.5 # inverse of pseudo-count
+        one_over_counts = torch.sqrt(pseudo_count) # inverse of pseudo-count
 
         return coin_flip_preds, coin_flip_priors, final_coin_flip_preds, one_over_counts

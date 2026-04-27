@@ -79,7 +79,7 @@ class MultitaskEnv(GridEngine):
             max_steps=500,
             width=19,
             height=7,
-            reward_range=(0, 1),
+            reward_range=(0, 10),
             simple_actions=simple_actions,
             simple_obs=simple_obs,
             use_globaly_unique_id=use_globaly_unique_id
