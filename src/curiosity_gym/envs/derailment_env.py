@@ -27,7 +27,7 @@ class DerailmentEnv(GridEngine):
 
         env_settings = EnvironmentSettings(
             min_steps=0,
-            max_steps=500000,
+            max_steps=500,
             width=30, # 15x15 on each side
             height=15,
             reward_range=(0, 1),

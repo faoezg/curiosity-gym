@@ -17,6 +17,7 @@ import pygame
 import pandas as pd
 import seaborn as sns
 import math
+import random
 
 from curiosity_gym.core.objects import GridObject, Wall, ObjectState, Agent
 from curiosity_gym.core.pov import AgentPOV, GlobalView, LocalView, ForwardView
@@ -154,6 +155,8 @@ class GridEngine(gym.Env, ABC):
                 + f"Step reward: {reward}]"
             )
             self._render_frame()
+        
+        #self._change_object_colours()
 
         return (
             obs,
@@ -192,6 +195,11 @@ class GridEngine(gym.Env, ABC):
             if self.check_task()
             else 0
         )
+    
+    def _change_object_colours(self):
+        for wall in self.objects.walls:
+            random_color = random.choice(list(IX_TO_COLOR.keys()))
+            wall.color = random_color
 
     def reset(self, **kwargs) -> tuple[np.ndarray, dict]:
         """Reset the environment to an initial internal state.\n
@@ -543,7 +551,7 @@ class GridEngine(gym.Env, ABC):
 
         all_ids = state[:, 0]
         all_colours = state[:, 1]
-        all_states = state[:, 2]
+        all_obj_states = state[:, 2]
 
         id_labels = range(1,obj_class_count+2)
         id_encoding = one_hot_encode(all_ids, id_labels)
@@ -551,14 +559,17 @@ class GridEngine(gym.Env, ABC):
         colour_labels = list(IX_TO_COLOR.keys())
         colour_encoding = one_hot_encode_zero_indexed(all_colours, colour_labels)
 
+        obj_state_labels = range(1,obj_class_count * 3)
+        obj_state_encoding = one_hot_encode_zero_indexed(all_obj_states, obj_state_labels)
+
         encoded_state = np.asarray([])
         for cell_idx in range(len(state)):
             cell_id_encoded = id_encoding[cell_idx]
             cell_colour_encoded = colour_encoding[cell_idx]
-            cell_state_encoded = state[cell_idx][2]
+            cell_obj_state_encoded = obj_state_encoding[cell_idx]
 
 
-            encoded_state = np.concatenate((encoded_state, cell_id_encoded, cell_colour_encoded, cell_state_encoded), axis=None)
+            encoded_state = np.concatenate((encoded_state, cell_id_encoded, cell_colour_encoded, cell_obj_state_encoded), axis=None)
         
         return encoded_state
 

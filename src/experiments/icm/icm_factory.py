@@ -11,8 +11,8 @@ def make_icm_env(
     base_env_id: str = "SparseEnv",
     base_env_pov: str = "local_2",
     device: str = "cpu",
-    latent_rep_dim: int = 32,
-    hidden_dim: int = 64,
+    latent_rep_dim: int = 1024,
+    hidden_dim: int = 2048,
     intrinsic_reset_threshold: float = 0.5,
     allow_global_state_reset: bool = False,
     render_mode: str | None = None,
@@ -38,11 +38,11 @@ def make_icm_env(
             device = device,
             state_dim=raw_env.observation_space.shape[0], # type: ignore
             action_dim=raw_env.action_space.n, # type: ignore
-            latent_rep_dim=512,
-            hidden_dim=1024,
-            beta=.8,
-            eta=500,
-            icm_lr=5e-6
+            latent_rep_dim=latent_rep_dim,#raw_env.observation_space.shape[0], # type: ignore
+            hidden_dim=hidden_dim,
+            beta=.5,
+            eta=100,
+            icm_lr=1e-5
         )
     new_env = ICMCuriosityWrapper(device,
                                raw_env,
@@ -52,6 +52,6 @@ def make_icm_env(
                                max_training_steps=max_training_steps,
                                max_episodes=max_episodes)
 
-    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 50 == 0)
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 100 == 0)
 
     return new_env

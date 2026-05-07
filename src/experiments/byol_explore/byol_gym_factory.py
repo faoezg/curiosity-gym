@@ -16,8 +16,8 @@ def make_byol_env(
     reward_norm_decay: float = 0.99,
     hidden_dim: int = 32,
     latent_rep_dim: int = 128,
-    time_horizon: int = 5,
-    alpha: float = 0.9999,
+    time_horizon: int = 2,
+    alpha: float = 0.99999,
     render_mode: str = "rgb_array",
     max_episodes: int = 5000,
     max_training_steps: int = 500,
@@ -40,7 +40,7 @@ def make_byol_env(
     byol_model = ByolExploreModel(state_dim=raw_env.observation_space.shape[0], # type: ignore
                             action_dim=raw_env.action_space.n, # type: ignore
                             hidden_dim=hidden_dim,
-                            latent_rep_dim=latent_rep_dim,
+                            latent_rep_dim=raw_env.observation_space.shape[0], # type: ignore
                             time_horizon=time_horizon,
                             device=device,
                             alpha=alpha,

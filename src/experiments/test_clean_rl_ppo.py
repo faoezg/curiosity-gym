@@ -43,7 +43,7 @@ from stable_baselines3.common.env_util import make_vec_env
 
 
 def tmp():
-    vec_env =  make_vec_env("MultitaskEnv-Experiment", n_envs=1)
+    vec_env =  make_vec_env("SimpleSparseEnv-Experiment", n_envs=1)
     model = PPO("MlpPolicy", vec_env, verbose=1, device="cpu")
     model.learn(total_timesteps=500_000)
 

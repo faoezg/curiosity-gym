@@ -30,6 +30,8 @@ class LoggingWrapper(gym.Wrapper):
         state, extrinsic_reward, terminated, truncated, info = super().step(action)
         self.total_extrinsic_reward += extrinsic_reward # type: ignore
         self.total_episode_extrinsic_reward += extrinsic_reward # type: ignore
+        if (isinstance(self.env, GridEngine)):
+            self.state_space_visited[self.env.objects.agent.position.tobytes()] = 1
 
         return state, extrinsic_reward, terminated, truncated, info
 

@@ -29,7 +29,7 @@ class GlobalView(AgentPOV):
             obj_id_count = len(GridObject.id_map.keys())
         else:
             obj_id_count = GridObject._next_instance_id - 1
-        total_label_count = obj_id_count + (len(IX_TO_COLOR.keys()) + 1) + 1 # +1 for color zero indexed and for states TODO encode obj state as well?
+        total_label_count = obj_id_count + (len(IX_TO_COLOR.keys()) + 1) + obj_id_count * 3 # +1 for color zero indexed and for states TODO encode obj state as well?
         observation_space_shape = (number_of_nodes * total_label_count,) if simple_observation_space else (number_of_nodes,3)
         observation_space = spaces.Box(
             shape=observation_space_shape, high=10, low=0, dtype=np.int64

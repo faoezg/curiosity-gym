@@ -1,9 +1,7 @@
 import torch
 import torch.nn.functional as F
-from torch import nn
-from torch import device, optim
-from experiments.components import IntrinsicMotivationModel
-import numpy as np
+from torch import device
+from experiments.components import IntrinsicMotivationModel, RewardNormalizer
 
 from .icm_network import ICMNetwork
 
@@ -46,29 +44,30 @@ class ICMModel(IntrinsicMotivationModel):
 
         self.icm_network.eval() # no gradiants
         with torch.no_grad():
-            state_tensor = torch.tensor(state, dtype=torch.float32, device=self.icm_network.device).flatten(0).unsqueeze(0)
-            next_state_tensor = torch.tensor(next_state, dtype=torch.float32, device=self.icm_network.device).flatten(0).unsqueeze(0)
-            action_tensor = torch.tensor([action], dtype=torch.long, device=self.icm_network.device)
+            state_tensor = torch.tensor(state, dtype=torch.float32, device=self.icm_network.device)
+            next_state_tensor = torch.tensor(next_state, dtype=torch.float32, device=self.icm_network.device)
+            action_tensor = torch.tensor(action, dtype=torch.long, device=self.icm_network.device)
             _, phi_next, forward_pred, _ = self.icm_network.forward(state_tensor, next_state_tensor, action_tensor)
             intrinsic_reward = self.calc_forward_loss(forward_pred, phi_next).item()
+            intrinsic_reward = self.icm_network.eta * intrinsic_reward
 
-        return self.icm_network.eta * intrinsic_reward
+        return intrinsic_reward
     
     def calc_forward_loss(self, forward_pred: torch.Tensor, next_state: torch.Tensor) -> torch.Tensor:
-        return 0.5 * F.mse_loss(forward_pred, next_state, reduction="mean")
+        return 0.5 * F.cosine_similarity(forward_pred, next_state, dim=-1) ** 2
     
     def calc_icm_loss(self, state: torch.Tensor, next_state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         _, phi_next, forward_pred, inv_logits = self.icm_network.forward(state, next_state, action)
         action_one_hot = F.one_hot(action, self.action_dim).to(torch.float32).to(self.device)
-        inv_loss = F.cross_entropy(inv_logits, action_one_hot, reduction="mean")
+        inv_loss = F.cross_entropy(inv_logits, action_one_hot, reduction="sum")
         forward_loss = self.calc_forward_loss(forward_pred, phi_next)
         return inv_loss, forward_loss
     
     def _train_network(self, prev_state, state, action):
-        self.icm_network.train() # TODO this is single batch, perhaps add replay buffer?
-        state_tensor = torch.tensor(prev_state, dtype=torch.float32, device=self.icm_network.device).flatten(0).unsqueeze(0)
-        next_state_tensor = torch.tensor(state, dtype=torch.float32, device=self.icm_network.device).flatten(0).unsqueeze(0)
-        action_tensor = torch.tensor([action], dtype=torch.long, device=self.icm_network.device)
+        self.icm_network.train()
+        state_tensor = torch.tensor(prev_state, dtype=torch.float32, device=self.icm_network.device)
+        next_state_tensor = torch.tensor(state, dtype=torch.float32, device=self.icm_network.device)
+        action_tensor = torch.tensor(action, dtype=torch.long, device=self.icm_network.device)
         inv_loss, forward_loss = self.calc_icm_loss(state_tensor, next_state_tensor, action_tensor)
         icm_beta = self.icm_network.beta
         loss = (1 - icm_beta) * inv_loss + icm_beta * forward_loss

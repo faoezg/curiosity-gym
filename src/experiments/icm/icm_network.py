@@ -33,8 +33,12 @@ class ICMNetwork(nn.Module):
                  self.action_dim = action_dim
                  self.beta = beta
                  self.eta = eta
+                 self.use_cnn_encoder = False
 
-                 self.encoder_model = self._create_encoder_model(state_dim, hidden_dim, latent_rep_dim)
+                 if (not self.use_cnn_encoder):
+                    self.encoder_model = self._create_encoder_model(state_dim, hidden_dim, latent_rep_dim)
+                 else:
+                    self.encoder_model = self._create_cnn_encoder_model(3, state_dim, latent_rep_dim)
                  self.forward_model = self._create_forward_model(latent_rep_dim, action_dim, hidden_dim)
                  self.invers_model  = self._create_invers_model(latent_rep_dim, action_dim, hidden_dim)
     
@@ -61,35 +65,50 @@ class ICMNetwork(nn.Module):
           """
 
           phi, phi_next = self._encode_states(state, next_state)
+          #phi = state
+          #phi_next = next_state
           inv_logits = self._pass_through_inverse_model(phi, phi_next)
           forward_pred = self._pass_through_forward_model(phi, action)
           return phi, phi_next, forward_pred, inv_logits
 
     def _encode_states(self, state, next_state):
-        phi = self.encoder_model(state)           # Dim (Batch, state-space)
-        phi_next = self.encoder_model(next_state) # Dim (Batch, state-space)
+        if (self.use_cnn_encoder):
+            state = torch.swapdims(state, 0, 1)
+            next_state = torch.swapdims(next_state, 0, 1)
+        phi = self.encoder_model(state).squeeze()
+        phi_next = self.encoder_model(next_state).squeeze()
         return phi, phi_next
 
     def _pass_through_forward_model(self, state: torch.Tensor, action: torch.Tensor):
         action_onehot = F.one_hot(action, num_classes=self.action_dim).float()
-        forward_input = torch.cat([state, action_onehot], dim=1)
+        forward_input = torch.cat([state, action_onehot])
         return self.forward_model(forward_input)
 
     def _pass_through_inverse_model(self, state, next_state):
-        inv_input = torch.cat([state, next_state], dim=1) # Dim (Batch, 2 * state-space)
-        inv_logits = self.invers_model(inv_input)         # Dim (Batch, action-space)
+        inv_input = torch.cat([state, next_state])
+        inv_logits = self.invers_model(inv_input)
         return inv_logits
 
     def _create_encoder_model(self, state_dim, hidden_dim, latent_rep_dim) -> nn.Sequential:
         return nn.Sequential(
-            nn.Linear(state_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, latent_rep_dim)
+            nn.Linear(state_dim, latent_rep_dim),
+           # nn.ReLU(),
+           # nn.Linear(hidden_dim, hidden_dim // 2),
+           # nn.ReLU(),
+           # nn.Linear(hidden_dim // 2, hidden_dim // 4),
+           # nn.ReLU(),
+           # nn.Linear(hidden_dim // 4, latent_rep_dim)
         )
+    
+    def _create_cnn_encoder_model(self, state_channel_dim, state_dim, latent_rep_dim) -> nn.Sequential:
+         return nn.Sequential(
+              nn.Conv1d(in_channels=state_channel_dim, out_channels=state_channel_dim, kernel_size=1),
+              #nn.ReLU(),
+              #nn.Conv1d(in_channels=state_channel_dim, out_channels=state_channel_dim, kernel_size=1, groups=3),
+              nn.ReLU(),
+              nn.Conv1d(in_channels=state_channel_dim, out_channels=1, kernel_size=1), # MLP/NIN
+              nn.Linear(state_dim, latent_rep_dim) # linear transfrom into latent dims
+         )
 
     def _create_forward_model(self, latent_rep_dim, action_dim, hidden_dim) -> nn.Sequential:
         """(phi(s), a) -> phi_hat(s')"""
@@ -100,7 +119,15 @@ class ICMNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, latent_rep_dim)
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, latent_rep_dim),
+           # nn.Dropout(),
+           # nn.Linear(hidden_dim, hidden_dim),
+           # nn.ReLU(),
+           # nn.Linear(hidden_dim, hidden_dim),
+           # nn.ReLU(),
+           # nn.Linear(hidden_dim, latent_rep_dim)
         )
 
     def _create_invers_model(self, latent_rep_dim, action_dim, hidden_dim) -> nn.Sequential:

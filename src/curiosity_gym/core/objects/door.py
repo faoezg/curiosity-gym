@@ -36,8 +36,9 @@ class Door(GridObject):
         if self.state == 2 and agent.color == self.color:
             self.state = 0
             agent.color = agent.start_color
+        # disabling this might essentialy trun the door "invisible" to the agent as walkable tiles also have state 0
         else:
-            self.state = (self.state + 1) % 2
+           self.state = (self.state + 1) % 2
 
     @override
     def render(self, canvas: pygame.Surface, pixelsquare: float) -> None:
