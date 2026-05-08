@@ -156,7 +156,7 @@ class GridEngine(gym.Env, ABC):
             )
             self._render_frame()
         
-        #self._change_object_colours()
+        self._change_object_colours()
 
         return (
             obs,

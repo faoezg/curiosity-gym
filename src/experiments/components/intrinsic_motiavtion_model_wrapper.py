@@ -15,6 +15,7 @@ from curiosity_gym.core.objects import Key
 
 from .intrinsic_motiavtion_model import IntrinsicMotivationModel
 from experiments.byol_explore.byol_model import ByolExploreModel
+from experiments.components import ReplayBuffer, Transition
 
 class IntrinsicMotivationModelWrapper(gym.Wrapper):
     def __init__(self,
@@ -29,6 +30,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.env: GridEngine | gym.Env = self.env.unwrapped # getting ride of bad type hint as casting isn't a real thing in python
         self.intrinsic_model = intrinsic_model
         self.device = device
+        self.replay_buffer = ReplayBuffer(size=10000)
 
         self.last_best_global_state = None
         self.last_best_intrinsic_reward = 0.0
@@ -64,7 +66,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             obs, info = self.env.reset_to_specific_global_state(self.last_best_global_state, **kwargs)
 
         if (isinstance(self.env, GridEngine)):
-            is_trainig_done = self.episode_count >= self.max_episodes or self.training_step >= self.max_training_steps
+            is_trainig_done = self.episode_count >= self.max_episodes or self.total_training_step >= self.max_training_steps
             if (is_trainig_done and self.absolute_episode_count % 50 == 0):
                 # TODO THINK ABOUT BYOL
                 # ORDER MATTERS BECOUSE OF AGENT STATE/COLOUR CHANGE ON RESET
@@ -75,6 +77,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
 
         self.total_episode_extrinsic_reward = 0
         self.total_episode_intrinsic_reward = 0
+        self.training_step = 0
 
         if (isinstance(self.env, MultitaskEnv) and self.absolute_episode_count >= self.max_episodes * 0.56 and self.env.task == 1): # should be after 280.000 trainin steps
             self.last_n_extrinsic_rewards_before_task_switch = self.last_n_extrinsic_rewards.copy()
@@ -90,6 +93,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action)
         else:
             state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
+        self._store_transition(self.prev_state, action, extrinsic_reward, state)
         intrinsic_reward = self._get_intrinsic_reward_from_model(state=state, action=action)
         if (isinstance(self.env, GridEngine)):
             self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state) # type: ignore
@@ -127,6 +131,13 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
     @abstractmethod
     def _get_intrinsic_reward_from_model_no_training(self, *args, **kwargs) -> float | Any:
         pass
+
+    def _store_transition(self, old_state, action, reward, new_state):
+        transition = Transition(old_state, action, reward, new_state)
+        self.replay_buffer.add(transition)
+    
+    def _sample_batch(self, batch_size = 32):
+        return self.replay_buffer.sample(batch_size)
 
     # TODO make nicer and normalize intrinsic reward for comparisons??
     def _calc_intrinsic_reward_map(self) -> tuple[list[dict[tuple[int,int], float]], list[int]]:

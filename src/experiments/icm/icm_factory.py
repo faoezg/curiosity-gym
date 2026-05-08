@@ -11,7 +11,7 @@ def make_icm_env(
     base_env_id: str = "SparseEnv",
     base_env_pov: str = "local_2",
     device: str = "cpu",
-    latent_rep_dim: int = 1024,
+    latent_rep_dim: int = 254,
     hidden_dim: int = 2048,
     intrinsic_reset_threshold: float = 0.5,
     allow_global_state_reset: bool = False,
@@ -40,9 +40,9 @@ def make_icm_env(
             action_dim=raw_env.action_space.n, # type: ignore
             latent_rep_dim=latent_rep_dim,#raw_env.observation_space.shape[0], # type: ignore
             hidden_dim=hidden_dim,
-            beta=.5,
+            beta=.2,
             eta=100,
-            icm_lr=1e-5
+            icm_lr=1e-6
         )
     new_env = ICMCuriosityWrapper(device,
                                raw_env,

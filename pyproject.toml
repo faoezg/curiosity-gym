@@ -97,3 +97,6 @@ torch = [
 torchvision = [
   { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
+pywin32 = [
+  "sys_platform == 'win32'"
+]

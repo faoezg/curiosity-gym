@@ -1,7 +1,8 @@
 import torch
 import torch.nn.functional as F
+import numpy as np
 from torch import device
-from experiments.components import IntrinsicMotivationModel, RewardNormalizer
+from experiments.components import IntrinsicMotivationModel, Transition, RewardNormalizer
 
 from .icm_network import ICMNetwork
 
@@ -36,6 +37,7 @@ class ICMModel(IntrinsicMotivationModel):
         self.optimizer = torch.optim.Adam(self.icm_network.parameters(), lr=icm_lr)
         self.action_dim = action_dim
         self.device = device
+        self.reward_normalizer = RewardNormalizer()
 
     def calc_intrinsic_reward(self, state, next_state, action) -> float:
         """
@@ -51,7 +53,7 @@ class ICMModel(IntrinsicMotivationModel):
             intrinsic_reward = self.calc_forward_loss(forward_pred, phi_next).item()
             intrinsic_reward = self.icm_network.eta * intrinsic_reward
 
-        return intrinsic_reward
+        return self.reward_normalizer.normalize_reward(intrinsic_reward)
     
     def calc_forward_loss(self, forward_pred: torch.Tensor, next_state: torch.Tensor) -> torch.Tensor:
         return 0.5 * F.cosine_similarity(forward_pred, next_state, dim=-1) ** 2
@@ -63,6 +65,29 @@ class ICMModel(IntrinsicMotivationModel):
         forward_loss = self.calc_forward_loss(forward_pred, phi_next)
         return inv_loss, forward_loss
     
+    def _train_network_with_batch(self, batch: list[Transition]):
+        self.icm_network.train()
+        prev_state_list = []
+        next_state_list = []
+        action_list = []
+
+        for transition in batch:
+            prev_state_list.append(transition.state)
+            action_list.append(transition.action)
+            next_state_list.append(transition.next_state)
+
+        state_tensor = torch.tensor(np.asarray(prev_state_list), dtype=torch.float32, device=self.icm_network.device)
+        action_tensor = torch.tensor(np.asarray(action_list), dtype=torch.long, device=self.icm_network.device)
+        next_state_tensor = torch.tensor(np.asarray(next_state_list), dtype=torch.float32, device=self.icm_network.device)
+
+        inv_loss, forward_loss = self.calc_icm_loss(state_tensor, next_state_tensor, action_tensor)
+        icm_beta = self.icm_network.beta
+        loss = (1 - icm_beta) * inv_loss + icm_beta * forward_loss
+        loss = loss.mean()
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
     def _train_network(self, prev_state, state, action):
         self.icm_network.train()
         state_tensor = torch.tensor(prev_state, dtype=torch.float32, device=self.icm_network.device)

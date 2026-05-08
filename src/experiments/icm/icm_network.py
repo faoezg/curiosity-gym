@@ -81,23 +81,23 @@ class ICMNetwork(nn.Module):
 
     def _pass_through_forward_model(self, state: torch.Tensor, action: torch.Tensor):
         action_onehot = F.one_hot(action, num_classes=self.action_dim).float()
-        forward_input = torch.cat([state, action_onehot])
+        forward_input = torch.cat([state, action_onehot], dim=-1)
         return self.forward_model(forward_input)
 
     def _pass_through_inverse_model(self, state, next_state):
-        inv_input = torch.cat([state, next_state])
+        inv_input = torch.cat([state, next_state], dim=-1)
         inv_logits = self.invers_model(inv_input)
         return inv_logits
 
     def _create_encoder_model(self, state_dim, hidden_dim, latent_rep_dim) -> nn.Sequential:
         return nn.Sequential(
             nn.Linear(state_dim, latent_rep_dim),
-           # nn.ReLU(),
-           # nn.Linear(hidden_dim, hidden_dim // 2),
-           # nn.ReLU(),
-           # nn.Linear(hidden_dim // 2, hidden_dim // 4),
-           # nn.ReLU(),
-           # nn.Linear(hidden_dim // 4, latent_rep_dim)
+            #nn.ReLU(),
+            #nn.Linear(hidden_dim, hidden_dim // 2),
+            #nn.ReLU(),
+            #nn.Linear(hidden_dim // 2, hidden_dim // 4),
+            #nn.ReLU(),
+            #nn.Linear(hidden_dim // 4, latent_rep_dim)
         )
     
     def _create_cnn_encoder_model(self, state_channel_dim, state_dim, latent_rep_dim) -> nn.Sequential:
@@ -116,10 +116,10 @@ class ICMNetwork(nn.Module):
             nn.Linear(latent_rep_dim + action_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
+           # nn.ReLU(),
+           # nn.Linear(hidden_dim, hidden_dim),
+           # nn.ReLU(),
+           # nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, latent_rep_dim),
            # nn.Dropout(),
@@ -135,10 +135,10 @@ class ICMNetwork(nn.Module):
         return nn.Sequential(
             nn.Linear(2 * latent_rep_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+           # nn.Linear(hidden_dim, hidden_dim),
+           # nn.ReLU(),
+           # nn.Linear(hidden_dim, hidden_dim),
+           # nn.ReLU(),
             nn.Linear(hidden_dim, action_dim),
             nn.Softmax()
         )
