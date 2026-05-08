@@ -2,7 +2,7 @@
 name = "curiosity-gym"
 version = "0.1.0"
 description = "Add your description here"
-readme = "README.md"
+readme = "readme.md"
 requires-python = ">=3.12"
 authors = [{name = "Chris Reimann"}, {name = "Fabian Kvas"}, {name = "Fatih Özgan"}]
 dependencies = [
