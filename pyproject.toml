@@ -50,7 +50,7 @@ dependencies = [
     "pyparsing==3.2.0",
     "python-dateutil==2.9.0.post0",
     "pytz==2024.2",
-    "pywin32==308",
+    "pywin32==308; sys_platform == 'win32'",
     "pyzmq==26.2.0",
     "rich>=14.3.3",
     "seaborn==0.13.2",
@@ -96,7 +96,4 @@ torch = [
 ]
 torchvision = [
   { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-]
-pywin32 = [
-  "sys_platform == 'win32'"
 ]
