@@ -53,8 +53,11 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         info["intrinsic_reward"] = intrinsic_reward
         info["total_reward"] = reward 
 
-        return state, reward, terminated, truncated, info 
+        self.prev_state = state
+        self.training_step += 1
+        self.total_training_step += 1
 
+        return state, reward, terminated, truncated, info 
 
     def _create_trajectory(self):
         state_tensors = []
