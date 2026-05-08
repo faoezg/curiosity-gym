@@ -232,11 +232,12 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         avg_extrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_extrinsic_rewards]) / len(self.last_n_extrinsic_rewards)
         avg_intrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_intrinsic_rewards]) / len(self.last_n_intrinsic_rewards)
 
-        print("############# STATS ################")
-        print(f"Lower Bound of visited Statespace: {lower_bound_visited_state_space}")
-        print(f"Avg. ext. Reward over all Trainingsteps: {avg_extrinsic_reward}")
-        print(f"Avg. ext. Reward over last 10 Episodes: {avg_extrinsic_reward_last_10_episodes}")
-        print(f"Avg. intr. Reward over last 10 Episodes: {avg_intrinsic_reward_last_10_episodes}")
-        if (self.last_n_extrinsic_rewards_before_task_switch is not None):
-            avg_extrinsic_reward_last_10_episodes_before_switch = sum([reward for reward in self.last_n_extrinsic_rewards_before_task_switch]) / len(self.last_n_extrinsic_rewards_before_task_switch)
-            print(f"Avg. ext. Reward over last 10 Episodes before Task switch: {avg_extrinsic_reward_last_10_episodes_before_switch}")
+        with open(f"stats_{self.env.name}_episode_{self.absolute_episode_count}.txt", "a") as f:
+            f.write("############# STATS ################ \n")
+            f.write(f"Lower Bound of visited Statespace: {lower_bound_visited_state_space} \n")
+            f.write(f"Avg. ext. Reward over all Trainingsteps: {avg_extrinsic_reward} \n")
+            f.write(f"Avg. ext. Reward over last 10 Episodes: {avg_extrinsic_reward_last_10_episodes} \n")
+            f.write(f"Avg. intr. Reward over last 10 Episodes: {avg_intrinsic_reward_last_10_episodes} \n")
+            if (self.last_n_extrinsic_rewards_before_task_switch is not None):
+                avg_extrinsic_reward_last_10_episodes_before_switch = sum([reward for reward in self.last_n_extrinsic_rewards_before_task_switch]) / len(self.last_n_extrinsic_rewards_before_task_switch)
+                f.write(f"Avg. ext. Reward over last 10 Episodes before Task switch: {avg_extrinsic_reward_last_10_episodes_before_switch} \n")

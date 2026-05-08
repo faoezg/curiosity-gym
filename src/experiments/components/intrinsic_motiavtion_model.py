@@ -14,7 +14,3 @@ class IntrinsicMotivationModel(ABC):
     @abstractmethod
     def _train_network(self, *args, **kwargs):
         pass
-
-    @abstractmethod
-    def _train_network_with_batch(self, *args, **kwargs):
-        pass

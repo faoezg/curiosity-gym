@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from torch import device
-from experiments.components import IntrinsicMotivationModel, Transition, RewardNormalizer
+from experiments.components import IntrinsicMotivationModel, Transition
 
 from .icm_network import ICMNetwork
 
@@ -37,7 +37,6 @@ class ICMModel(IntrinsicMotivationModel):
         self.optimizer = torch.optim.Adam(self.icm_network.parameters(), lr=icm_lr)
         self.action_dim = action_dim
         self.device = device
-        self.reward_normalizer = RewardNormalizer()
 
     def calc_intrinsic_reward(self, state, next_state, action) -> float:
         """
@@ -53,7 +52,7 @@ class ICMModel(IntrinsicMotivationModel):
             intrinsic_reward = self.calc_forward_loss(forward_pred, phi_next).item()
             intrinsic_reward = self.icm_network.eta * intrinsic_reward
 
-        return self.reward_normalizer.normalize_reward(intrinsic_reward)
+        return intrinsic_reward
     
     def calc_forward_loss(self, forward_pred: torch.Tensor, next_state: torch.Tensor) -> torch.Tensor:
         return 0.5 * F.cosine_similarity(forward_pred, next_state, dim=-1) ** 2

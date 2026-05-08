@@ -47,10 +47,4 @@ def tmp():
     model = PPO("MlpPolicy", vec_env, verbose=1, device="cpu")
     model.learn(total_timesteps=500_000)
 
-    obs = vec_env.reset()
-    while True:
-        action, _states = model.predict(obs)
-        obs, _, _, _ = vec_env.step(action)
-        vec_env.render("human")
-
 tmp()
