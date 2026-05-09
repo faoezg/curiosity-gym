@@ -14,8 +14,8 @@ def make_byol_env(
     device: str = "cpu",
     lambda_byol: float = 5.0,
     reward_norm_decay: float = 0.99,
-    hidden_dim: int = 32,
-    latent_rep_dim: int = 128,
+    hidden_dim: int = 1024,
+    latent_rep_dim: int = 1024,
     time_horizon: int = 2,
     alpha: float = 0.99999,
     render_mode: str = "rgb_array",
@@ -39,8 +39,8 @@ def make_byol_env(
 
     byol_model = ByolExploreModel(state_dim=raw_env.observation_space.shape[0], # type: ignore
                             action_dim=raw_env.action_space.n, # type: ignore
-                            hidden_dim=raw_env.observation_space.shape[0], # type: ignore
-                            latent_rep_dim=raw_env.observation_space.shape[0], # type: ignore
+                            hidden_dim=hidden_dim,
+                            latent_rep_dim=latent_rep_dim,
                             time_horizon=time_horizon,
                             device=device,
                             alpha=alpha,
