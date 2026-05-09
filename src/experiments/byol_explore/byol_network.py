@@ -29,11 +29,11 @@ class ByolExploreNetwork(nn.Module):
     def forward(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor):
         B, T, C = state_buffer.shape 
 
-        # state_encoding = self.encoder_model(state_buffer.view(B * T, C)).view(B, T, self.latent_rep_dim)
+        state_encoding = self.encoder_model(state_buffer.view(B * T, C)).view(B, T, self.latent_rep_dim)
         # state_projection = self.projection_model(state_encoding)
 
-        #h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_encoding)
-        h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_buffer)
+        h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_encoding)
+        #h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_buffer)
         byol_loss, intrinsic_rewards = self._calc_loss_and_intrinsic_rewards(B, T, h_closed_hist, action_buffer, state_buffer)
 
         return byol_loss, intrinsic_rewards
