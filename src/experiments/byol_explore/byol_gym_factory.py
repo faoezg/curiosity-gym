@@ -13,7 +13,7 @@ def make_byol_env(
     base_env_pov: str = "local_2",
     device: str = "cpu",
     lambda_byol: float = 5.0,
-    reward_norm_decay: float = 0.99,
+    reward_norm_decay: float = 0.9999,
     hidden_dim: int = 1024,
     latent_rep_dim: int = 1024,
     time_horizon: int = 2,

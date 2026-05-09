@@ -24,7 +24,7 @@ class ByolExploreModel(IntrinsicMotivationModel):
         self.reward_normaliser = RewardNormaliser(decay=reward_norm_decay)
 
         self.lambda_byol = lambda_byol
-        self.optimizer = torch.optim.Adam(self.byol_network.parameters())
+        self.optimizer = torch.optim.Adam(self.byol_network.parameters(), lr=0.0001)
 
     def calc_intrinsic_reward(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor):
         byol_loss, raw_intrinsic_reward = self.byol_network(state_buffer, action_buffer)

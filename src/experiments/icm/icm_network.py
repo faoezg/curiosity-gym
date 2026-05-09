@@ -91,10 +91,10 @@ class ICMNetwork(nn.Module):
 
     def _create_encoder_model(self, state_dim, hidden_dim, latent_rep_dim) -> nn.Sequential:
         return nn.Sequential(
-            nn.Linear(state_dim, latent_rep_dim),
-            #nn.ReLU(),
-            #nn.Linear(hidden_dim, hidden_dim // 2),
-            #nn.ReLU(),
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, latent_rep_dim),
+            nn.ReLU(),
             #nn.Linear(hidden_dim // 2, hidden_dim // 4),
             #nn.ReLU(),
             #nn.Linear(hidden_dim // 4, latent_rep_dim)
@@ -116,10 +116,10 @@ class ICMNetwork(nn.Module):
             nn.Linear(latent_rep_dim + action_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-           # nn.ReLU(),
-           # nn.Linear(hidden_dim, hidden_dim),
-           # nn.ReLU(),
-           # nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, latent_rep_dim),
            # nn.Dropout(),
@@ -135,8 +135,8 @@ class ICMNetwork(nn.Module):
         return nn.Sequential(
             nn.Linear(2 * latent_rep_dim, hidden_dim),
             nn.ReLU(),
-           # nn.Linear(hidden_dim, hidden_dim),
-           # nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
            # nn.Linear(hidden_dim, hidden_dim),
            # nn.ReLU(),
             nn.Linear(hidden_dim, action_dim),
