@@ -39,7 +39,7 @@ def make_byol_env(
 
     byol_model = ByolExploreModel(state_dim=raw_env.observation_space.shape[0], # type: ignore
                             action_dim=raw_env.action_space.n, # type: ignore
-                            hidden_dim=hidden_dim,
+                            hidden_dim=raw_env.observation_space.shape[0], # type: ignore
                             latent_rep_dim=raw_env.observation_space.shape[0], # type: ignore
                             time_horizon=time_horizon,
                             device=device,

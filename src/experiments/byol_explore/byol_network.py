@@ -94,9 +94,9 @@ class ByolExploreNetwork(nn.Module):
         return nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
+            nn.Linear(hidden_dim, latent_rep_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, latent_rep_dim)
+            #nn.Linear(hidden_dim, latent_rep_dim)
         ).to(torch.float32).to(self.DEVICE)
     
     def _init_target_model(self, alpha: float):
@@ -115,5 +115,8 @@ class ByolExploreNetwork(nn.Module):
     # g in the paper
     def _create_predictor_model(self, hidden_dim: int, latent_rep_dim: int):
         return nn.Sequential(
-            nn.Linear(hidden_dim, latent_rep_dim)
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, latent_rep_dim),
+            nn.ReLU()
         ).to(torch.float32)

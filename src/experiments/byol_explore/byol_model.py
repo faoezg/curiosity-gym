@@ -36,6 +36,5 @@ class ByolExploreModel(IntrinsicMotivationModel):
     def _train_network(self, byol_loss: torch.Tensor):
         self.optimizer.zero_grad()
         (byol_loss * self.lambda_byol).backward()
-        torch.nn.utils.clip_grad_norm_(self.byol_network.parameters(), 1.0)
         self.optimizer.step()
         self.byol_network.update_target_model()
