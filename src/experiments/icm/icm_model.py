@@ -33,8 +33,14 @@ class ICMModel(IntrinsicMotivationModel):
                  icm_lr: float = 1e-3,
                  ):
         super().__init__()
+        self.latent_rep_dim = latent_rep_dim
         self.icm_network = ICMNetwork(device, state_dim, action_dim, latent_rep_dim, hidden_dim, beta, eta).to(device)
-        self.optimizer = torch.optim.Adam(self.icm_network.parameters(), lr=icm_lr)
+        #self.optimizer = torch.optim.Adam([
+        #    {"params": self.icm_network.encoder_model.parameters()},
+        #    {"params": self.icm_network.forward_model.parameters()},
+        #    {"params": self.icm_network.invers_model.parameters()},
+        #])
+        self.optimizer = torch.optim.Adam(self.icm_network.parameters())
         self.action_dim = action_dim
         self.device = device
 
@@ -55,13 +61,14 @@ class ICMModel(IntrinsicMotivationModel):
         return intrinsic_reward
     
     def calc_forward_loss(self, forward_pred: torch.Tensor, next_state: torch.Tensor) -> torch.Tensor:
-        return 0.5 * F.cosine_similarity(forward_pred, next_state, dim=-1) ** 2
+        next_state = next_state.detach()
+        return 0.5 * F.mse_loss(forward_pred, next_state, reduction="mean")
     
     def calc_icm_loss(self, state: torch.Tensor, next_state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         _, phi_next, forward_pred, inv_logits = self.icm_network.forward(state, next_state, action)
         action_one_hot = F.one_hot(action, self.action_dim).to(torch.float32).to(self.device)
-        inv_loss = F.cross_entropy(inv_logits, action_one_hot, reduction="sum")
-        forward_loss = self.calc_forward_loss(forward_pred, phi_next)
+        inv_loss = F.cross_entropy(inv_logits, action)
+        forward_loss = self.calc_forward_loss(forward_pred, phi_next) * self.latent_rep_dim # scaling taken from the implementation provided by the paper
         return inv_loss, forward_loss
     
     def _train_network_with_batch(self, batch: list[Transition]):
@@ -82,7 +89,6 @@ class ICMModel(IntrinsicMotivationModel):
         inv_loss, forward_loss = self.calc_icm_loss(state_tensor, next_state_tensor, action_tensor)
         icm_beta = self.icm_network.beta
         loss = (1 - icm_beta) * inv_loss + icm_beta * forward_loss
-        loss = loss.mean()
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()

@@ -25,6 +25,9 @@ class ByolExploreNetwork(nn.Module):
         self._init_recurrent_model(action_dim, latent_rep_dim, hidden_dim)
         self.predictor_model = self._create_predictor_model(hidden_dim, latent_rep_dim)
         self._init_target_model(alpha)
+
+        self.policy_head = self._init_policy_head(latent_rep_dim, 256)
+        self.policy_value = self._init_value_head(latent_rep_dim, 256)
     
     def forward(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor):
         B, T, C = state_buffer.shape 

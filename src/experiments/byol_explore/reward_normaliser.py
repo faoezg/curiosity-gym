@@ -11,10 +11,6 @@ class RewardNormaliser:
         self.c = 1
 
     def __call__(self, raw_tensor: torch.Tensor) -> torch.Tensor:
-        """
-        raw : (B,) or (B,T) tensor of *unnormalised* intrinsic rewards.
-        Returns the *normalised* reward.
-        """
         batch_mean = raw_tensor.mean().item()
         batch_squared_mean   = (raw_tensor ** 2).mean().item()
 

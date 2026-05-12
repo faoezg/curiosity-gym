@@ -1,7 +1,8 @@
 import torch
 from torch import nn, device
 import torch.nn.functional as F
-import copy
+import numpy as np
+
 
 from experiments.components import IntrinsicMotivationModel
 from .byol_network import ByolExploreNetwork

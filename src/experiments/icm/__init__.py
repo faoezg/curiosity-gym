@@ -19,7 +19,7 @@ gym.register(
     entry_point="experiments.icm.icm_factory:make_icm_env",
     kwargs={
         "base_env_id":"SimpleSparseEnv",
-        "max_episodes": 1000,
+        "max_episodes": 1,
         "max_training_steps": 500_000
     }
 )

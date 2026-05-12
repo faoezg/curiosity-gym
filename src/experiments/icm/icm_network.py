@@ -93,6 +93,8 @@ class ICMNetwork(nn.Module):
         return nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
             nn.Linear(hidden_dim, latent_rep_dim),
             nn.ReLU(),
             #nn.Linear(hidden_dim // 2, hidden_dim // 4),
@@ -116,11 +118,11 @@ class ICMNetwork(nn.Module):
             nn.Linear(latent_rep_dim + action_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            #nn.ReLU(),
+            #nn.Linear(hidden_dim, hidden_dim),
+            #nn.ReLU(),
+            #nn.Linear(hidden_dim, hidden_dim),
+            nn.LeakyReLU(),
             nn.Linear(hidden_dim, latent_rep_dim),
            # nn.Dropout(),
            # nn.Linear(hidden_dim, hidden_dim),
@@ -140,5 +142,4 @@ class ICMNetwork(nn.Module):
            # nn.Linear(hidden_dim, hidden_dim),
            # nn.ReLU(),
             nn.Linear(hidden_dim, action_dim),
-            nn.Softmax()
         )
