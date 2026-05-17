@@ -1,4 +1,5 @@
 from torch import device
+from torch.utils.tensorboard import SummaryWriter
 
 from curiosity_gym.core.gridengine import GridEngine
 from experiments.components import IntrinsicMotivationModelWrapper, ReplayBuffer
@@ -21,9 +22,17 @@ class ICMCuriosityWrapper(IntrinsicMotivationModelWrapper):
 
     def _get_intrinsic_reward_from_model(self, state, action):
         int_reward = self.intrinsic_model.calc_intrinsic_reward(self.prev_state, state, action)
-        if (self.training_step % 12 == 0 and len(self.replay_buffer) >= self.batch_size):
+        inv_loss = 0
+        forward_loss = 0
+        if (len(self.replay_buffer) >= self.batch_size):
             batch = self._sample_batch(self.batch_size)
-            self.intrinsic_model._train_network_with_batch(batch)
+            inv_loss, forward_loss = self.intrinsic_model._train_network_with_batch(batch)
+        
+        #inv_loss, forward_loss = self.intrinsic_model._train_network(self.prev_state, state, action)
+
+        self.writer.add_scalar("Loss/Inv_Modell", inv_loss, self.total_training_step)
+        self.writer.add_scalar("Loss/Forw_Modell", forward_loss, self.total_training_step)
+
         return int_reward
 
     def _get_intrinsic_reward_from_model_no_training(self, state, action):

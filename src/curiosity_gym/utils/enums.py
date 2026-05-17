@@ -18,6 +18,7 @@ class SimplerAction(Enum):
     MOVE_RIGHT = 1
     MOVE_LEFT = 2
     INTERACT = 3
+    MOVE_BACK = 4
 
 class Rotation(Enum):
     """Possible rotations in a curiosity-gym grid environment."""

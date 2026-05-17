@@ -49,6 +49,7 @@ class AgentPOV(ABC):
         self.width = env_size[0]
         self.height = env_size[1]
         self.visible_positions = []
+        self.interactable_positions = []
 
     @abstractmethod
     def transform_obs(self, state: np.ndarray, agent: Agent) -> np.ndarray:
@@ -124,3 +125,32 @@ class AgentPOV(ABC):
             x += dx if x != pos_cell[0] else 0
             y += dy if y != pos_cell[1] else 0
         return True
+
+    def get_interactable_cells(self, agent_pos: np.ndarray) -> list[np.ndarray]:
+        obj_pos = []
+        #max_manhatten_dist = 0
+        #for cell in self.visible_positions:
+        #    x_dist_to_agent = abs(cell[0] - agent_pos[0])
+        #    y_dist_to_agent = abs(cell[1] - agent_pos[1])
+        #    manhatten_dist = x_dist_to_agent + y_dist_to_agent
+        #    if (manhatten_dist > max_manhatten_dist):
+        #        max_manhatten_dist = manhatten_dist
+
+        #for cell in self.visible_positions:
+        #    x_dist_to_agent = abs(cell[0] - agent_pos[0])
+        #    y_dist_to_agent = abs(cell[1] - agent_pos[1])
+        #    manhatten_dist = x_dist_to_agent + y_dist_to_agent
+        #    if (manhatten_dist < max_manhatten_dist):
+        #        obj_pos.append(cell) 
+        self.interactable_positions = []
+
+        for cell in self.visible_positions:
+            x_dist_to_agent = abs(cell[0] - agent_pos[0])
+            y_dist_to_agent = abs(cell[1] - agent_pos[1])
+            if (x_dist_to_agent > 1 or y_dist_to_agent > 1):
+                continue
+            else:
+                obj_pos.append(cell)
+                self.interactable_positions.append(cell)
+
+        return obj_pos

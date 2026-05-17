@@ -32,6 +32,10 @@ class Agent(GridObject):
         action: Action | SimplerAction,
         front_object: GridObject | None = None,
         walkable: bool = False,
+        walkable_behind: bool | None = False,
+        walkable_left: bool | None = False,
+        walkable_right: bool | None = False,
+        interactable_objs: list[GridObject] | None = None
     ) -> float:
         """Perform a given action. \n
         The agent is the main recipient of the action specified in the step function of
@@ -55,7 +59,6 @@ class Agent(GridObject):
             Returns 0.
         """
 
-        #if action == Action.FORWARD and (walkable or front_object):
         if action == Action.FORWARD and walkable:
             self.position = self.position + STATE_TO_ROTATION[self.state] * np.array(
                 [1, -1]
@@ -69,19 +72,33 @@ class Agent(GridObject):
 
         elif action == Action.INTERACT and front_object:
             front_object.interact(self)
-        
-        elif action == SimplerAction.MOVE_RIGHT and walkable:
+
+        elif action == SimplerAction.FORWARD and walkable:
+            self.position = self.position + STATE_TO_ROTATION[self.state] * np.array(
+                [1, -1]
+            )
+
+        elif action == SimplerAction.MOVE_BACK and walkable_behind:
+            self.position = self.position + STATE_TO_ROTATION[self.state] * np.array(
+                [-1, 1]
+            )
+
+        elif action == SimplerAction.INTERACT and interactable_objs:
+            for obj in interactable_objs:
+                obj.interact(self)
+
+        elif action == SimplerAction.MOVE_RIGHT and walkable_right:
             self.state = (self.state - 1) % 4
             self.position = self.position + STATE_TO_ROTATION[self.state] * np.array(
                 [1, -1]
             )
-        elif action == SimplerAction.MOVE_LEFT and walkable:
+
+
+        elif action == SimplerAction.MOVE_LEFT and walkable_left:
             self.state = (self.state + 1) % 4
             self.position = self.position + STATE_TO_ROTATION[self.state] * np.array(
                 [1, -1]
             )
-
-
 
         return 0
 
@@ -114,3 +131,36 @@ class Agent(GridObject):
             Grid coordinates of the position.
         """
         return self.position + STATE_TO_ROTATION[self.state] * np.array([1, -1])
+
+    def get_back(self) -> np.ndarray:
+        """Calculate position behind of the agent grid object.
+
+        Returns
+        -------
+        np.ndarray
+            Grid coordinates of the position.
+        """
+        return self.position + STATE_TO_ROTATION[self.state] * np.array([-1, 1])
+
+    def get_left(self) -> np.ndarray:
+        """Calculate position left of the agent grid object.
+
+        Returns
+        -------
+        np.ndarray
+            Grid coordinates of the position.
+        """
+
+        left_state = (self.state + 1) % 4
+        return self.position + STATE_TO_ROTATION[left_state] * np.array([1, -1])
+
+    def get_right(self) -> np.ndarray:
+        """Calculate position left of the agent grid object.
+
+        Returns
+        -------
+        np.ndarray
+            Grid coordinates of the position.
+        """
+        right_state = (self.state - 1) % 4
+        return self.position + STATE_TO_ROTATION[right_state] * np.array([1, -1])

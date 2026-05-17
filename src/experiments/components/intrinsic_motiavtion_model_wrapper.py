@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Any
 import gymnasium as gym
 from torch import device
+from torch.utils.tensorboard import SummaryWriter
 import random
 import matplotlib.pyplot as plt
 from collections import defaultdict, deque
@@ -51,6 +52,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.last_n_extrinsic_rewards = deque(maxlen=10)
         self.last_n_intrinsic_rewards = deque(maxlen=10)
         self.last_n_extrinsic_rewards_before_task_switch = None
+        self.writer = SummaryWriter()
 
     def reset(self, **kwargs):
         self.episode_count += 1
@@ -67,14 +69,14 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
 
         if (isinstance(self.env, GridEngine)):
             is_trainig_done = self.episode_count >= self.max_episodes or self.total_training_step >= self.max_training_steps
-            if (is_trainig_done and self.absolute_episode_count % 50 == 0):
+            if (is_trainig_done and self.absolute_episode_count % 100 == 0):
                 # TODO THINK ABOUT BYOL
                 # ORDER MATTERS BECOUSE OF AGENT STATE/COLOUR CHANGE ON RESET
                 if (not isinstance(self.intrinsic_model, ByolExploreModel)):
                     self.print_intrinsic_heatmap()
                 self._save_environment_heatmaps()
                 self._calc_stats()
-
+        
         self.total_episode_extrinsic_reward = 0
         self.total_episode_intrinsic_reward = 0
         self.training_step = 0
@@ -95,8 +97,10 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
         self._store_transition(self.prev_state, action, extrinsic_reward, state)
         intrinsic_reward = self._get_intrinsic_reward_from_model(state=state, action=action)
+
         if (isinstance(self.env, GridEngine)):
             self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state) # type: ignore
+
         reward = extrinsic_reward + intrinsic_reward # type: ignore
 
         info["extrinsic_reward"] = extrinsic_reward
@@ -110,10 +114,15 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
 
         self.total_extrinsic_reward += extrinsic_reward # type: ignore
 
+        self.writer.add_scalar("Reward/Intrinsic", intrinsic_reward, self.total_training_step)
+        self.writer.add_scalar("Reward/Extrinsic", extrinsic_reward, self.total_training_step)
 
         self.prev_state = state
         self.training_step += 1
         self.total_training_step += 1
+
+        #if (self.total_training_step > 0 and self.total_training_step % 50 == 0):
+            #self._calc_training_stats()
 
         return state, reward, terminated, truncated, info
     
@@ -241,3 +250,13 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             if (self.last_n_extrinsic_rewards_before_task_switch is not None):
                 avg_extrinsic_reward_last_10_episodes_before_switch = sum([reward for reward in self.last_n_extrinsic_rewards_before_task_switch]) / len(self.last_n_extrinsic_rewards_before_task_switch)
                 f.write(f"Avg. ext. Reward over last 10 Episodes before Task switch: {avg_extrinsic_reward_last_10_episodes_before_switch} \n")
+
+    def _calc_training_stats(self):
+        action_list = [element.value for element in Action] # Why is there no method for this?
+        obs = self.env._get_obs() # type: ignore
+        random_action = random.choice(action_list)
+        intrinsic_reward = self._get_intrinsic_reward_from_model_no_training(state=obs, action=random_action)
+
+        with open(f"stats_{self.env.name}_episode_{self.absolute_episode_count}_training.txt", "a") as f:
+            f.write(f"############# STATS for Step {self.total_training_step} ################ \n")
+            f.write(f"Intrinsic Reward {intrinsic_reward} \n")

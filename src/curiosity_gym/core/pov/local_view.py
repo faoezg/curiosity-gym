@@ -5,7 +5,7 @@ import numpy as np
 from gymnasium import spaces
 from curiosity_gym.core.objects import Agent, GridObject
 from curiosity_gym.utils.constants import IX_TO_COLOR
-from curiosity_gym.utils.enums import Action
+from curiosity_gym.utils.enums import Action, SimplerAction
 
 class LocalView(AgentPOV):
     """Agent point-of-view observing grid cells in a given radius around the agent.
@@ -33,20 +33,21 @@ class LocalView(AgentPOV):
         env_size: tuple[int, int],
         xray: bool = False,
         simple_observation_space: bool = True,
+        simple_action_space: bool = True,
         individual_obj_ids: bool = True
     ) -> None:
         self.radius = radius
         self.xray = xray
-        action_space = spaces.Discrete(len(Action))
+        action_space = spaces.Discrete(len(SimplerAction)) if simple_action_space else spaces.Discrete(len(Action)) 
         number_of_cells = (self.radius * 2 + 1) ** 2
         if (not individual_obj_ids):
             obj_id_count = len(GridObject.id_map.keys())
         else:
             obj_id_count = GridObject._next_instance_id - 1
-        total_label_count = obj_id_count  + (len(IX_TO_COLOR.keys()) + 1) + obj_id_count * 3 # +1 for color zero indexed and for states TODO encode obj state as well?
+        total_label_count = obj_id_count  + (len(IX_TO_COLOR.keys()) + 1) + obj_id_count * 3 # +1 for color zero indexed
         observation_space_shape = (number_of_cells * total_label_count,) if simple_observation_space else (number_of_cells,3)
         observation_space = spaces.Box(
-            shape=observation_space_shape, high=10, low=0, dtype=np.int64
+            shape=observation_space_shape, high=10000, low=0, dtype=np.int64
         )
         super().__init__(action_space, observation_space, env_size)
 

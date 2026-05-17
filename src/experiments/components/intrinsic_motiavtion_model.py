@@ -12,5 +12,5 @@ class IntrinsicMotivationModel(ABC):
         pass
 
     @abstractmethod
-    def _train_network(self, *args, **kwargs):
+    def _train_network(self, *args, **kwargs) -> float | tuple[float, float]:
         pass

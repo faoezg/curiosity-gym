@@ -178,11 +178,30 @@ class GridEngine(gym.Env, ABC):
     def _calc_obj_reward(self, action: int | Action | SimplerAction):
         reward = 0
         for ob in self.objects.get_non_wall():
-            reward += ob.step(
-                self.agent_pov.transform_action(action, self.env_settings.simple_actions),
-                self.find_object(self.objects.agent.get_front()),
-                self._check_walkable(self.objects.agent.get_front()),
-            )
+            if (isinstance(ob, Agent) and self.env_settings.simple_actions):
+                
+                interactable_cells = self.agent_pov.get_interactable_cells(self.objects.agent.position)
+                interactable_objs = []
+                for obj in self.objects.other:
+                    for cell in interactable_cells:
+                        if cell[0] == obj.position[0] and cell[1] == obj.position[1]:
+                            interactable_objs.append(obj)
+
+                reward += ob.step(
+                    action=self.agent_pov.transform_action(action, self.env_settings.simple_actions),
+                    front_object=None,
+                    walkable=self._check_walkable(self.objects.agent.get_front()),
+                    walkable_behind=self._check_walkable(self.objects.agent.get_back()),
+                    walkable_left=self._check_walkable(self.objects.agent.get_left()),
+                    walkable_right=self._check_walkable(self.objects.agent.get_right()),
+                    interactable_objs=interactable_objs
+                )
+            else:
+                reward += ob.step(
+                    self.agent_pov.transform_action(action, self.env_settings.simple_actions),
+                    self.find_object(self.objects.agent.get_front()),
+                    self._check_walkable(self.objects.agent.get_front()),
+                )
         return reward
     
     def _calc_task_reward(self,):
@@ -593,6 +612,7 @@ class GridEngine(gym.Env, ABC):
             return GlobalView(
                 (self.env_settings.width, self.env_settings.height),
                 self.env_settings.simple_obs,
+                self.env_settings.simple_actions,
                 self.env_settings.use_globaly_unique_id
             )
 
@@ -611,6 +631,7 @@ class GridEngine(gym.Env, ABC):
                 (self.env_settings.width, self.env_settings.height),
                 xray,
                 self.env_settings.simple_obs,
+                self.env_settings.simple_actions,
                 self.env_settings.use_globaly_unique_id
             )
 
@@ -638,6 +659,7 @@ class GridEngine(gym.Env, ABC):
                 (self.env_settings.width, self.env_settings.height),
                 xray,
                 self.env_settings.simple_obs,
+                self.env_settings.simple_actions,
                 self.env_settings.use_globaly_unique_id
             )
 
@@ -682,7 +704,11 @@ class GridEngine(gym.Env, ABC):
             for pos in self.agent_pov.visible_positions:
                 overlay = pygame.Surface((tilesize, tilesize))
                 overlay.set_alpha(30)
-                overlay.fill((255, 153, 20))
+
+                if pos in self.agent_pov.interactable_positions:
+                    overlay.fill((155, 53, 120))
+                else:
+                    overlay.fill((255, 153, 20))
                 canvas.blit(overlay, (pos[0] * tilesize, pos[1] * tilesize))
 
         # Display canvas in window

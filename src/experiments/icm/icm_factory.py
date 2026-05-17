@@ -11,14 +11,17 @@ def make_icm_env(
     base_env_id: str = "SparseEnv",
     base_env_pov: str = "local_2",
     device: str = "cpu",
-    latent_rep_dim: int = 254,
-    hidden_dim: int = 2048,
+    latent_rep_dim: int = 512,
+    hidden_dim_forward: int = 1024,
+    hidden_dim_inverse: int = 32,
+    hidden_dim_encoder: int = 1024,
     intrinsic_reset_threshold: float = 0.5,
     allow_global_state_reset: bool = False,
     render_mode: str | None = None,
     max_episodes: int = 1,
     max_training_steps: int = 500,
     use_simple_obs: bool = True,
+    use_simple_actions: bool = False,
     use_globaly_unique_id: bool = True,
     is_atari: bool = False,
 ) -> gym.Env:
@@ -28,6 +31,7 @@ def make_icm_env(
                                     render_mode=render_mode,
                                     agentPOV=base_env_pov,
                                     simple_obs=use_simple_obs,
+                                    simple_actions=use_simple_actions,
                                     use_globaly_unique_id=use_globaly_unique_id
                                     ) # type: ignore
     else:
@@ -39,9 +43,11 @@ def make_icm_env(
             state_dim=raw_env.observation_space.shape[0], # type: ignore
             action_dim=raw_env.action_space.n, # type: ignore
             latent_rep_dim=latent_rep_dim,#raw_env.observation_space.shape[0], # type: ignore
-            hidden_dim=hidden_dim,
+            hidden_dim_forward=hidden_dim_forward,
+            hidden_dim_inverse=hidden_dim_inverse,
+            hidden_dim_encoder=hidden_dim_encoder,
             beta=.2,
-            eta=100,
+            eta=5,
             icm_lr=1e-6
         )
     new_env = ICMCuriosityWrapper(device,
@@ -51,7 +57,6 @@ def make_icm_env(
                                allow_global_state_reset,
                                max_training_steps=max_training_steps,
                                max_episodes=max_episodes)
-
-    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 100 == 0)
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 5== 0)
 
     return new_env
