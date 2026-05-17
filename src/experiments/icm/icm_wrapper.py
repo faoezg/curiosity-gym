@@ -31,7 +31,7 @@ class ICMCuriosityWrapper(IntrinsicMotivationModelWrapper):
         if (len(self.rollout_buffer) >= 20):
             inv_loss, forward_loss = self.intrinsic_model._train_network_with_batch(self._get_rollout())
         
-        inv_loss, forward_loss = self.intrinsic_model._train_network(self.prev_state, state, action)
+        #inv_loss, forward_loss = self.intrinsic_model._train_network(self.prev_state, state, action)
 
         self.writer.add_scalar("Loss/Inv_Modell", inv_loss, self.total_training_step)
         self.writer.add_scalar("Loss/Forw_Modell", forward_loss, self.total_training_step)
