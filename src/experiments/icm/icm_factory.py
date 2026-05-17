@@ -57,6 +57,6 @@ def make_icm_env(
                                allow_global_state_reset,
                                max_training_steps=max_training_steps,
                                max_episodes=max_episodes)
-    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 5== 0)
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 100 == 0)
 
     return new_env

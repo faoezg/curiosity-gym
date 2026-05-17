@@ -32,6 +32,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.intrinsic_model = intrinsic_model
         self.device = device
         self.replay_buffer = ReplayBuffer(size=10000)
+        self.rollout_buffer = deque(maxlen=20)
 
         self.last_best_global_state = None
         self.last_best_intrinsic_reward = 0.0
@@ -144,9 +145,15 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
     def _store_transition(self, old_state, action, reward, new_state):
         transition = Transition(old_state, action, reward, new_state)
         self.replay_buffer.add(transition)
+        self.rollout_buffer.append(transition)
     
     def _sample_batch(self, batch_size = 32):
         return self.replay_buffer.sample(batch_size)
+    
+    def _get_rollout(self):
+        rollout = list(self.rollout_buffer)
+        self.rollout_buffer.clear()
+        return rollout
 
     # TODO make nicer and normalize intrinsic reward for comparisons??
     def _calc_intrinsic_reward_map(self) -> tuple[list[dict[tuple[int,int], float]], list[int]]:
