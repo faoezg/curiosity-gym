@@ -11,8 +11,8 @@ def make_icm_env(
     base_env_id: str = "SparseEnv",
     base_env_pov: str = "local_2",
     device: str = "cpu",
-    latent_rep_dim: int = 512,
-    hidden_dim_forward: int = 1024,
+    latent_rep_dim: int = 256,
+    hidden_dim_forward: int = 32,
     hidden_dim_inverse: int = 32,
     hidden_dim_encoder: int = 1024,
     intrinsic_reset_threshold: float = 0.5,
@@ -57,6 +57,7 @@ def make_icm_env(
                                allow_global_state_reset,
                                max_training_steps=max_training_steps,
                                max_episodes=max_episodes)
+
     new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 100 == 0)
 
     return new_env

@@ -122,9 +122,6 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.training_step += 1
         self.total_training_step += 1
 
-        #if (self.total_training_step > 0 and self.total_training_step % 50 == 0):
-            #self._calc_training_stats()
-
         return state, reward, terminated, truncated, info
     
     def _handle_new_intrinsic_reward(self, intrinsic_reward, raw_global_state):

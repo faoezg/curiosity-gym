@@ -4,8 +4,6 @@ from curiosity_gym.core.gridengine import GridEngine
 from experiments.components import IntrinsicMotivationModelWrapper
 from .icm_model import ICMModel
 
-from collections import deque
-
 class ICMCuriosityWrapper(IntrinsicMotivationModelWrapper):
     def __init__(
         self,
@@ -30,11 +28,12 @@ class ICMCuriosityWrapper(IntrinsicMotivationModelWrapper):
         #    inv_loss, forward_loss = self.intrinsic_model._train_network_with_batch(batch)
         if (len(self.rollout_buffer) >= 20):
             inv_loss, forward_loss = self.intrinsic_model._train_network_with_batch(self._get_rollout())
+            self.writer.add_scalar("Loss/Inv_Modell", inv_loss, self.total_training_step)
+            self.writer.add_scalar("Loss/Forw_Modell", forward_loss, self.total_training_step)
+
+
         
         #inv_loss, forward_loss = self.intrinsic_model._train_network(self.prev_state, state, action)
-
-        self.writer.add_scalar("Loss/Inv_Modell", inv_loss, self.total_training_step)
-        self.writer.add_scalar("Loss/Forw_Modell", forward_loss, self.total_training_step)
 
         return int_reward
 

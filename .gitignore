@@ -3,6 +3,7 @@ runs/*
 heatmaps/*
 tmp/*
 pull_results.sh
+stats_*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
