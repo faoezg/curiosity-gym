@@ -25,6 +25,7 @@ class Agent(GridObject):
     @override
     def __init__(self, position: tuple[int, int], state: int = 0) -> None:
         super().__init__(position, 1, state)
+        self.carrys_key = False
 
     @override
     def step(
@@ -72,6 +73,7 @@ class Agent(GridObject):
 
         elif action == Action.INTERACT and front_object:
             front_object.interact(self)
+
 
         elif action == SimplerAction.FORWARD and walkable:
             self.position = self.position + STATE_TO_ROTATION[self.state] * np.array(

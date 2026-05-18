@@ -1,5 +1,6 @@
 from typing_extensions import override
 from curiosity_gym.core.objects.grid_object import GridObject
+from curiosity_gym.core.objects.agent import Agent
 
 import numpy as np
 from curiosity_gym.utils.constants import IX_TO_COLOR
@@ -18,7 +19,7 @@ class Door(GridObject):
     """
 
     @override
-    def interact(self, agent: GridObject):
+    def interact(self, agent: Agent):
         """Interact with the door.
         The result of the interaction depends on the door state prior to
         the interaction. Closed doors (state = 1) can always be opened
@@ -31,11 +32,12 @@ class Door(GridObject):
             Agent object performing the interaction.
         """
 
-        if self.state == 2 and agent.color != self.color:
+        if self.state == 2 and not agent.carrys_key:
             return
-        if self.state == 2 and agent.color == self.color:
+        if self.state == 2 and agent.carrys_key:
             self.state = 0
-            agent.color = agent.start_color
+            agent.carrys_key = False
+            #agent.color = agent.start_color
         # disabling this might essentialy trun the door "invisible" to the agent as walkable tiles also have state 0
         else:
            self.state = (self.state + 1) % 2

@@ -46,12 +46,12 @@ class ICMModel(IntrinsicMotivationModel):
                                       hidden_dim_encoder,
                                       beta,
                                       eta).to(device)
-        self.optimizer = torch.optim.Adam([
-            {"params": self.icm_network.encoder_model.parameters(), "lr": 5e-4},
-            {"params": self.icm_network.forward_model.parameters(), "lr": 1e-3},
-            {"params": self.icm_network.invers_model.parameters(), "lr": 1e-3},
-        ])
-        #self.optimizer = torch.optim.Adam(self.icm_network.parameters(), lr=icm_lr)
+        #self.optimizer = torch.optim.Adam([
+        #    {"params": self.icm_network.encoder_model.parameters(), "lr": 5e-4},
+        #    {"params": self.icm_network.forward_model.parameters(), "lr": 1e-3},
+        #    {"params": self.icm_network.invers_model.parameters(), "lr": 1e-3},
+        #])
+        self.optimizer = torch.optim.Adam(self.icm_network.parameters())
         #self.optimizer = torch.optim.SGD(self.icm_network.parameters())
         self.action_dim = action_dim
         self.device = device
@@ -75,7 +75,6 @@ class ICMModel(IntrinsicMotivationModel):
         return intrinsic_reward
     
     def calc_forward_loss(self, forward_pred: torch.Tensor, next_state: torch.Tensor) -> torch.Tensor:
-        #next_state = next_state.detach()
         return 0.5 * F.mse_loss(forward_pred, next_state, reduction="mean")
     
     def calc_icm_loss(self, state: torch.Tensor, next_state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:

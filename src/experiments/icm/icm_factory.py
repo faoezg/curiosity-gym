@@ -11,7 +11,7 @@ def make_icm_env(
     base_env_id: str = "SparseEnv",
     base_env_pov: str = "local_2",
     device: str = "cpu",
-    latent_rep_dim: int = 256,
+    latent_rep_dim: int = 1024,
     hidden_dim_forward: int = 32,
     hidden_dim_inverse: int = 32,
     hidden_dim_encoder: int = 1024,

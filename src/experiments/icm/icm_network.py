@@ -99,10 +99,14 @@ class ICMNetwork(nn.Module):
         return nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ELU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ELU(),
             nn.Linear(hidden_dim, hidden_dim // 2),
             nn.ELU(),
             nn.Linear(hidden_dim // 2, hidden_dim // 4),
             nn.ELU(),
+           # nn.Linear(hidden_dim // 2, hidden_dim // 4),
+           # nn.ELU(),
             nn.Linear(hidden_dim // 4, latent_rep_dim),
         )
     
@@ -123,10 +127,6 @@ class ICMNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ELU(),
-            #nn.Linear(hidden_dim, hidden_dim),
-            #nn.ELU(),
-            #nn.Linear(hidden_dim, hidden_dim),
-            #nn.ELU(),
             nn.Linear(hidden_dim, latent_rep_dim),
         )
 
@@ -134,8 +134,6 @@ class ICMNetwork(nn.Module):
         """(phi(s), phi(s')) -> action_hat"""
         return nn.Sequential(
             nn.Linear(2 * latent_rep_dim, hidden_dim),
-            nn.ELU(),
-            nn.Linear(hidden_dim, hidden_dim),
             nn.ELU(),
             nn.Linear(hidden_dim, action_dim),
         )

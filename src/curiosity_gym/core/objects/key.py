@@ -1,4 +1,5 @@
 from typing_extensions import override
+from curiosity_gym.core.objects.agent import Agent 
 from curiosity_gym.core.objects.grid_object import GridObject
 
 import numpy as np
@@ -9,7 +10,7 @@ class Key(GridObject):
     """Collectable grid object that is used to unlock :class:`Door` objects of the same color."""
 
     @override
-    def interact(self, agent: GridObject) -> None:
+    def interact(self, agent: Agent) -> bool:
         """Collect the key object and remove it from the environment.
         The agent changes color according to the key collected.
 
@@ -18,8 +19,11 @@ class Key(GridObject):
         agent : :class:`~Agent`
             Agent object performing the interaction.
         """
-        agent.color = self.color
-        self.position = np.array([-1, -1])
+        #agent.color = self.color
+        agent.carrys_key = True
+        self.position =  np.array([-5, -5])
+
+        return True
 
     @override
     def render(self, canvas: pygame.Surface, pixelsquare: float) -> None:
