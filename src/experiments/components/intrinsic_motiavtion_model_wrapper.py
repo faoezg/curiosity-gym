@@ -75,7 +75,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
 
         if (isinstance(self.env, GridEngine)):
             is_trainig_done = self.episode_count >= self.max_episodes or self.total_training_step >= self.max_training_steps
-            if (is_trainig_done and self.absolute_episode_count % 300 == 0):
+            if (is_trainig_done and self.absolute_episode_count % 200 == 0):
                 # TODO THINK ABOUT BYOL
                 # ORDER MATTERS BECOUSE OF AGENT STATE/COLOUR CHANGE ON RESET
                 if (not isinstance(self.intrinsic_model, ByolExploreModel)):
