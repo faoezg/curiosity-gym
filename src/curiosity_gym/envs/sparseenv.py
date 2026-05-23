@@ -54,7 +54,9 @@ class SparseEnv(GridEngine):
         window_width: int = 800,
         simple_actions: bool = False,
         simple_obs: bool = True,
-        use_globaly_unique_id: bool = True
+        use_globaly_unique_id: bool = True,
+        use_colours: bool = True,
+        use_rgb_state: bool = False,
     ) -> None:
 
         env_settings = EnvironmentSettings(
@@ -65,7 +67,8 @@ class SparseEnv(GridEngine):
             reward_range=(0, 1),
             simple_actions=simple_actions,
             simple_obs=simple_obs,
-            use_globaly_unique_id=use_globaly_unique_id
+            use_globaly_unique_id=use_globaly_unique_id,
+            use_rgb_state=use_rgb_state,
         )
 
         render_settings = RenderSettings(
@@ -79,18 +82,18 @@ class SparseEnv(GridEngine):
         other_objects = np.array(
             [
                 # Room 1:
-                Key((5, 2), color=3),
-                Door((9, 2), state=2, color=3),
+                Key((5, 2), color=3, use_colour=use_colours),
+                Door((9, 2), state=2, color=3, use_colour=use_colours),
                 # Room 2:
-                Key((13, 1), color=4),
-                Door((12, 4), state=2, color=4),
+                Key((13, 1), color=4, use_colour=use_colours),
+                Door((12, 4), state=2, color=4, use_colour=use_colours),
                 # Room 3:
-                Key((11, 8), color=5),
-                Door((8, 6), state=2, color=5),
+                Key((11, 8), color=5, use_colour=use_colours),
+                Door((8, 6), state=2, color=5, use_colour=use_colours),
                 Enemy((10, 9), state=1, reach=4),
                 # Room 4:
-                Key((5, 6), color=6),
-                Door((4, 8), state=2, color=6),
+                Key((5, 6), color=6, use_colour=use_colours),
+                Door((4, 8), state=2, color=6, use_colour=use_colours),
                 RandomBlock((6, 6)),
                 # Room 5:
                 Enemy((1, 5), state=0, reach=2),

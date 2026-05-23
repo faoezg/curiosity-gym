@@ -69,6 +69,10 @@ class AgentPOV(ABC):
             Observation within the :attr:`~observation_space`.
         """
 
+    @abstractmethod
+    def get_cell_label_count(self) -> int:
+        pass
+
     def transform_action(self, action: int | Action | SimplerAction, simple_actions: bool) -> Action | SimplerAction:
         """Transform given action so that it is compatible with the grid environment. \n
         Can be used to define alternative action spaces and map them to the grid dynamics.

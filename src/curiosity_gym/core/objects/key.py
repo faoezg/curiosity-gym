@@ -8,6 +8,9 @@ import pygame
 
 class Key(GridObject):
     """Collectable grid object that is used to unlock :class:`Door` objects of the same color."""
+    def __init__(self, position: tuple[int, int], color: int = 0, state: int = 0, use_colour: bool = True) -> None:
+        super().__init__(position, color, state)
+        self.use_colour = use_colour
 
     @override
     def interact(self, agent: Agent) -> bool:
@@ -19,10 +22,12 @@ class Key(GridObject):
         agent : :class:`~Agent`
             Agent object performing the interaction.
         """
-        #agent.color = self.color
-        agent.carrys_key = True
-        self.position =  np.array([-5, -5])
+        if (self.use_colour):
+            agent.color = self.color
+        else:
+            agent.carrys_key = True
 
+        self.position = np.array([-5, -5])
         return True
 
     @override

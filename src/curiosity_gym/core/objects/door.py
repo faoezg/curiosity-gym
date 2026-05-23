@@ -18,6 +18,10 @@ class Door(GridObject):
 
     """
 
+    def __init__(self, position: tuple[int, int], color: int = 0, state: int = 0, use_colour: bool = True) -> None:
+        super().__init__(position, color, state)
+        self.use_colour = use_colour
+
     @override
     def interact(self, agent: Agent):
         """Interact with the door.
@@ -31,16 +35,23 @@ class Door(GridObject):
         agent : :class:`~Agent`
             Agent object performing the interaction.
         """
-
-        if self.state == 2 and not agent.carrys_key:
-            return
-        if self.state == 2 and agent.carrys_key:
-            self.state = 0
-            agent.carrys_key = False
-            #agent.color = agent.start_color
-        # disabling this might essentialy trun the door "invisible" to the agent as walkable tiles also have state 0
+        if (self.use_colour):
+            if self.state == 2 and agent.color != self.color:
+                return
+            if self.state == 2 and agent.color == self.color:
+                self.state = 0
+                agent.color = agent.start_color
+            else:
+                self.state = (self.state + 1) % 2
         else:
-           self.state = (self.state + 1) % 2
+            if self.state == 2 and not agent.carrys_key:
+                return
+            if self.state == 2 and agent.carrys_key:
+                self.state = 0
+                agent.carrys_key = False
+                #agent.color = agent.start_color
+            else:
+                self.state = (self.state + 1) % 2
 
     @override
     def render(self, canvas: pygame.Surface, pixelsquare: float) -> None:

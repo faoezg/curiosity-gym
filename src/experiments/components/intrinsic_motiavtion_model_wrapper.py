@@ -26,13 +26,15 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                  intrinsic_reset_threshold: float = 0.5,
                  allow_global_state_reset: bool = False,
                  max_training_steps: int = 500,
-                 max_episodes: int = 1000) -> None:
+                 max_episodes: int = 1000,
+                 use_rgb_state: bool = False) -> None:
         super().__init__(env)
         self.env: GridEngine | gym.Env = self.env.unwrapped # getting ride of bad type hint as casting isn't a real thing in python
         self.intrinsic_model = intrinsic_model
         self.device = device
         self.replay_buffer = ReplayBuffer(size=10000)
         self.rollout_buffer = deque(maxlen=20)
+        self.use_rgb_state = use_rgb_state
 
         self.last_best_global_state = None
         self.last_best_intrinsic_reward = 0.0
@@ -64,13 +66,16 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         print("Current Episode: ", self.episode_count)
 
         if not self.allow_global_state_reset or self.last_best_global_state is None:
-            obs, info = self.env.reset(**kwargs)
+            if (not self.use_rgb_state):
+                obs, info = self.env.reset(**kwargs)
+            else:
+                obs, info = self.env.reset_with_rgb_state(**kwargs)
         else:
             obs, info = self.env.reset_to_specific_global_state(self.last_best_global_state, **kwargs)
 
         if (isinstance(self.env, GridEngine)):
             is_trainig_done = self.episode_count >= self.max_episodes or self.total_training_step >= self.max_training_steps
-            if (is_trainig_done and self.absolute_episode_count % 100 == 0):
+            if (is_trainig_done and self.absolute_episode_count % 300 == 0):
                 # TODO THINK ABOUT BYOL
                 # ORDER MATTERS BECOUSE OF AGENT STATE/COLOUR CHANGE ON RESET
                 if (not isinstance(self.intrinsic_model, ByolExploreModel)):
@@ -93,7 +98,11 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
 
     def step(self, action):
         if (isinstance(self.env, GridEngine)):
-            state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action)
+            if (not self.use_rgb_state):
+                state, extrinsic_reward, terminated, truncated, info, raw_global_state = self.env.step_with_global_state(action)
+            else:
+                state, extrinsic_reward, terminated, truncated, info = self.env.step_with_rgb_state(action)
+                raw_global_state = None
         else:
             state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
         self._store_transition(self.prev_state, action, extrinsic_reward, state)

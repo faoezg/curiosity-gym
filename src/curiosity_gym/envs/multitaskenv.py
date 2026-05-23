@@ -67,7 +67,8 @@ class MultitaskEnv(GridEngine):
         window_width: int = 1200,
         simple_actions: bool = False,
         simple_obs: bool = True,
-        use_globaly_unique_id: bool = True
+        use_globaly_unique_id: bool = True,
+        use_rgb_state: bool = False
     ) -> None:
 
         assert task <= 2, f"Invalid task id: {task}."
@@ -82,7 +83,8 @@ class MultitaskEnv(GridEngine):
             reward_range=(0, 10),
             simple_actions=simple_actions,
             simple_obs=simple_obs,
-            use_globaly_unique_id=use_globaly_unique_id
+            use_globaly_unique_id=use_globaly_unique_id,
+            use_rgb_state=use_rgb_state
         )
 
         render_settings = RenderSettings(

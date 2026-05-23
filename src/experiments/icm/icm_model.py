@@ -2,7 +2,6 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from torch import device
-from torch.utils.tensorboard import SummaryWriter
 from experiments.components import IntrinsicMotivationModel, Transition
 
 from .icm_network import ICMNetwork
@@ -33,7 +32,10 @@ class ICMModel(IntrinsicMotivationModel):
                  hidden_dim_encoder: int,
                  beta: float,
                  eta: float,
+                 stride: int,
                  icm_lr: float = 1e-3,
+                 use_1d_cnn_encoder: bool = False,
+                 use_cnn_encoder: bool = False,
                  ):
         super().__init__()
         self.latent_rep_dim = latent_rep_dim
@@ -45,19 +47,22 @@ class ICMModel(IntrinsicMotivationModel):
                                       hidden_dim_inverse,
                                       hidden_dim_encoder,
                                       beta,
-                                      eta).to(device)
-        #self.optimizer = torch.optim.Adam([
-        #    {"params": self.icm_network.encoder_model.parameters(), "lr": 5e-4},
-        #    {"params": self.icm_network.forward_model.parameters(), "lr": 1e-3},
-        #    {"params": self.icm_network.invers_model.parameters(), "lr": 1e-3},
-        #])
-        self.optimizer = torch.optim.Adam(self.icm_network.parameters())
+                                      eta,
+                                      stride,
+                                      use_1d_cnn_encoder,
+                                      use_cnn_encoder).to(device)
+        self.optimizer = torch.optim.Adam([
+            {"params": self.icm_network.encoder_model.parameters(), "lr": 1e-3},
+            {"params": self.icm_network.forward_model.parameters(), "lr": 1e-3},
+            {"params": self.icm_network.invers_model.parameters(), "lr": 1e-3},
+        ])
+        #self.optimizer = torch.optim.Adam(self.icm_network.parameters())
         #self.optimizer = torch.optim.SGD(self.icm_network.parameters())
         self.action_dim = action_dim
         self.device = device
 
         self.inv_loss_function = torch.nn.CrossEntropyLoss()
-
+    
     def calc_intrinsic_reward(self, state, next_state, action) -> float:
         """
         Calculates the intrinsic reward following Pathak et. al. 2017
@@ -65,13 +70,13 @@ class ICMModel(IntrinsicMotivationModel):
 
         self.icm_network.eval() # no gradiants
         with torch.no_grad():
-            state_tensor = torch.tensor(state, dtype=torch.float32, device=self.icm_network.device)
-            next_state_tensor = torch.tensor(next_state, dtype=torch.float32, device=self.icm_network.device)
-            action_tensor = torch.tensor(action, dtype=torch.long, device=self.icm_network.device)
+            state_tensor = torch.tensor(state, dtype=torch.float32, device=self.icm_network.device).unsqueeze(0)
+            next_state_tensor = torch.tensor(next_state, dtype=torch.float32, device=self.icm_network.device).unsqueeze(0)
+            action_tensor = torch.tensor(action, dtype=torch.long, device=self.icm_network.device).unsqueeze(0)
             _, phi_next, forward_pred, _ = self.icm_network.forward(state_tensor, next_state_tensor, action_tensor)
             intrinsic_reward = self.calc_forward_loss(forward_pred, phi_next).item()
             intrinsic_reward = self.icm_network.eta * intrinsic_reward
-        
+
         return intrinsic_reward
     
     def calc_forward_loss(self, forward_pred: torch.Tensor, next_state: torch.Tensor) -> torch.Tensor:
@@ -80,7 +85,7 @@ class ICMModel(IntrinsicMotivationModel):
     def calc_icm_loss(self, state: torch.Tensor, next_state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         _, phi_next, forward_pred, inv_logits = self.icm_network.forward(state, next_state, action)
 
-        forward_loss = self.calc_forward_loss(forward_pred, phi_next) * self.latent_rep_dim # scaling taken from the implementation provided by the paper
+        forward_loss = self.calc_forward_loss(forward_pred, phi_next) #* self.latent_rep_dim # scaling taken from the implementation provided by the paper
         inv_loss = self.inv_loss_function(inv_logits, action)
         return inv_loss, forward_loss
     
@@ -104,7 +109,7 @@ class ICMModel(IntrinsicMotivationModel):
         loss = (1 - icm_beta) * inv_loss + icm_beta * forward_loss
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.icm_network.parameters(), max_norm=40.0)
+        torch.nn.utils.clip_grad_norm_(self.icm_network.parameters(), max_norm=2)
         self.optimizer.step()
 
         return inv_loss.item(), forward_loss.item()
@@ -119,7 +124,7 @@ class ICMModel(IntrinsicMotivationModel):
         loss = (1 - icm_beta) * inv_loss + icm_beta * forward_loss
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.icm_network.parameters(), max_norm=40.0)
+        torch.nn.utils.clip_grad_norm_(self.icm_network.parameters(), max_norm=2)
         self.optimizer.step()
 
         #enc_grad_norm = sum(p.grad.norm().item() for p in self.icm_network.encoder_model.parameters())

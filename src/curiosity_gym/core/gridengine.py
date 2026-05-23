@@ -68,14 +68,7 @@ class GridEngine(gym.Env, ABC):
         self.render_settings = render_settings
         self.reward_range = env_settings.reward_range
         """Range of rewards that can be obtained within one episode."""
-
-        # Initialise agent pov
-        self.agent_pov = self._init_pov(agent_pov)
-        self.action_space = self.agent_pov.action_space
-        """Space of possible actions a RL agent can choose from."""
-        self.observation_space = self.agent_pov.observation_space
-        """Space of possible observations returned by the environment."""
-
+        
         # Current environment state
         self.objects = env_objects
         self.step_count = 0
@@ -95,6 +88,15 @@ class GridEngine(gym.Env, ABC):
         ), f"Invalid render_mode: {self.render_mode}"
         if self.render_settings.render_mode == "human":
             self.init_render()
+
+        # Initialise agent pov
+        self.agent_pov = self._init_pov(agent_pov)
+        self.label_count_per_cell = self.agent_pov.get_cell_label_count()
+        self.action_space = self.agent_pov.action_space
+        """Space of possible actions a RL agent can choose from."""
+        self.observation_space = self.agent_pov.observation_space
+        """Space of possible observations returned by the environment."""
+
 
     @abstractmethod
     def check_task(self) -> bool:
@@ -171,6 +173,11 @@ class GridEngine(gym.Env, ABC):
         raw_global_obs = self.get_raw_state()
         return obs, reward, terminated, truncated, info, raw_global_obs
 
+    def step_with_rgb_state(self, action):
+        _, reward, terminated, truncated, info = self.step(action)
+        rgb_state = self._render_frame(with_view_overlay=False)
+        return rgb_state, reward, terminated, truncated, info
+
     def _calc_reward(self, action: int | Action | SimplerAction):
         external_reward = self._calc_obj_reward(action) + self._calc_task_reward()
         return external_reward
@@ -241,6 +248,11 @@ class GridEngine(gym.Env, ABC):
         self.step_count = 0
         self.pos_count[tuple(self.objects.agent.position)] += 1
         return (self._get_obs(), self._get_info())
+    
+    def reset_with_rgb_state(self, **kwargs):
+        _, info = self.reset(**kwargs)
+        rbg_state = self._render_frame(with_view_overlay=False)
+        return rbg_state, info
     
     def reset_to_specific_global_state(self, raw_state: list[ObjectState], **kwargs):
         _, inital_info = self.reset(**kwargs)
@@ -605,6 +617,11 @@ class GridEngine(gym.Env, ABC):
 
         if isinstance(agent_pov, AgentPOV):
             return agent_pov
+        
+        if (self.env_settings.use_rgb_state):
+            rgb_state_size = self._render_frame(with_view_overlay=False).shape
+        else:
+            rgb_state_size = None
 
         # Construct pov by string
         xray = False
@@ -613,7 +630,9 @@ class GridEngine(gym.Env, ABC):
                 (self.env_settings.width, self.env_settings.height),
                 self.env_settings.simple_obs,
                 self.env_settings.simple_actions,
-                self.env_settings.use_globaly_unique_id
+                self.env_settings.use_globaly_unique_id,
+                use_rgb_state=self.env_settings.use_rgb_state,
+                rgb_state_size=rgb_state_size
             )
 
         if agent_pov.lower().startswith("local_"):
@@ -632,7 +651,9 @@ class GridEngine(gym.Env, ABC):
                 xray,
                 self.env_settings.simple_obs,
                 self.env_settings.simple_actions,
-                self.env_settings.use_globaly_unique_id
+                self.env_settings.use_globaly_unique_id,
+                use_rgb_state=self.env_settings.use_rgb_state,
+                rgb_state_size=rgb_state_size
             )
 
         if agent_pov.lower().startswith("forward_"):
@@ -660,7 +681,9 @@ class GridEngine(gym.Env, ABC):
                 xray,
                 self.env_settings.simple_obs,
                 self.env_settings.simple_actions,
-                self.env_settings.use_globaly_unique_id
+                self.env_settings.use_globaly_unique_id,
+                use_rgb_state=self.env_settings.use_rgb_state,
+                rgb_state_size=rgb_state_size
             )
 
         raise ValueError(f"Invalid agent pov: {agent_pov}.")

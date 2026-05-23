@@ -34,7 +34,9 @@ class LocalView(AgentPOV):
         xray: bool = False,
         simple_observation_space: bool = True,
         simple_action_space: bool = True,
-        individual_obj_ids: bool = True
+        individual_obj_ids: bool = True,
+        use_rgb_state: bool = False,
+        rgb_state_size: tuple[int, int, int] | None = None
     ) -> None:
         self.radius = radius
         self.xray = xray
@@ -44,11 +46,24 @@ class LocalView(AgentPOV):
             obj_id_count = len(GridObject.id_map.keys())
         else:
             obj_id_count = GridObject._next_instance_id - 1
-        total_label_count = obj_id_count  + (len(IX_TO_COLOR.keys()) + 1) + obj_id_count * 3 # +1 for color zero indexed
-        observation_space_shape = (number_of_cells * total_label_count,) if simple_observation_space else (number_of_cells,3)
-        observation_space = spaces.Box(
-            shape=observation_space_shape, high=10000, low=0, dtype=np.int64
-        )
+        self.total_label_count = obj_id_count  + (len(IX_TO_COLOR.keys()) + 1) + obj_id_count * 3 # +1 for color zero indexed
+        if (simple_observation_space):
+            observation_space_shape = (number_of_cells * self.total_label_count,)
+            observation_space = spaces.Box(
+                shape=observation_space_shape, high=1000, low=0, dtype=np.int64
+            )
+ 
+        elif (use_rgb_state and rgb_state_size is not None):
+            observation_space = spaces.Box(
+                shape=rgb_state_size, high=255, low=0, dtype=np.uint8
+            )
+
+        else:
+            observation_space_shape = (number_of_cells,3)
+            observation_space = spaces.Box(
+                shape=observation_space_shape, high=1000, low=0, dtype=np.int64
+            )
+
         super().__init__(action_space, observation_space, env_size)
 
     @override
@@ -68,6 +83,9 @@ class LocalView(AgentPOV):
                 self.visible_positions.append(cell)
                 local[ix_new] = state[ix]
         return local
+    
+    def get_cell_label_count(self):
+        return self.total_label_count
 
 # TODO DELETE THIS? MY BUG FIX WAS BAD!
 # from typing_extensions import override

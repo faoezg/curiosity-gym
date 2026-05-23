@@ -22,7 +22,8 @@ class DerailmentEnv(GridEngine):
         window_width: int = 800,
         simple_actions: bool = False,
         simple_obs: bool = True,
-        use_globaly_unique_id: bool = True
+        use_globaly_unique_id: bool = True,
+        use_rgb_state: bool = False
     ) -> None:
 
         env_settings = EnvironmentSettings(
@@ -33,7 +34,8 @@ class DerailmentEnv(GridEngine):
             reward_range=(0, 1),
             simple_actions=simple_actions,
             simple_obs=simple_obs,
-            use_globaly_unique_id=use_globaly_unique_id
+            use_globaly_unique_id=use_globaly_unique_id,
+        use_rgb_state=use_rgb_state
         )
 
         render_settings = RenderSettings(

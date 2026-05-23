@@ -64,6 +64,8 @@ class Agent(GridObject):
             self.position = self.position + STATE_TO_ROTATION[self.state] * np.array(
                 [1, -1]
             )
+            if (front_object):
+                front_object.interact(self)
 
         elif action == Action.TURN_RIGHT:
             self.state = (self.state - 1) % 4
@@ -73,7 +75,6 @@ class Agent(GridObject):
 
         elif action == Action.INTERACT and front_object:
             front_object.interact(self)
-
 
         elif action == SimplerAction.FORWARD and walkable:
             self.position = self.position + STATE_TO_ROTATION[self.state] * np.array(

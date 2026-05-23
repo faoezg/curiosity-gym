@@ -17,6 +17,7 @@ class RewardNormalizer():
         
     def _calc_delta(self, reward: float):
         return reward - self.reward_mean
+
     def reset(self):
         self.reward_mean = 0
         self.reward_var = 1.0
