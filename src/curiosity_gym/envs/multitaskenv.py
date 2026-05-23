@@ -68,7 +68,8 @@ class MultitaskEnv(GridEngine):
         simple_actions: bool = False,
         simple_obs: bool = True,
         use_globaly_unique_id: bool = True,
-        use_rgb_state: bool = False
+        use_colours: bool = True,
+        use_rgb_state: bool = False,
     ) -> None:
 
         assert task <= 2, f"Invalid task id: {task}."
