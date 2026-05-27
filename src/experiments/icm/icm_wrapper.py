@@ -14,7 +14,8 @@ class ICMCuriosityWrapper(IntrinsicMotivationModelWrapper):
         allow_global_state_reset: bool = False,
         max_training_steps: int = 500,
         max_episodes: int = 1000,
-        use_rgb_step: bool = False
+        use_rgb_step: bool = False,
+        rank: int | None = None
     ):
         super().__init__(env, icm, device, intrinsic_reset_threshold, allow_global_state_reset, max_training_steps, max_episodes, use_rgb_step)
         self.intrinsic_model: ICMModel = self.intrinsic_model
@@ -35,7 +36,7 @@ class ICMCuriosityWrapper(IntrinsicMotivationModelWrapper):
             self.writer.add_scalar("Loss/Inv_Modell", inv_loss, self.total_training_step)
             self.writer.add_scalar("Loss/Forw_Modell", forward_loss, self.total_training_step)
 
-        #if (len(self.rollout_buffer) >= 5):
+        #if (len(self.rollout_buffer) >= 20):
         #    inv_loss, forward_loss = self.intrinsic_model._train_network_with_batch(self._get_rollout())
         #    self.writer.add_scalar("Loss/Inv_Modell", inv_loss, self.total_training_step)
         #    self.writer.add_scalar("Loss/Forw_Modell", forward_loss, self.total_training_step)

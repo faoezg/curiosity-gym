@@ -159,6 +159,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
     def _get_rollout(self):
         rollout = list(self.rollout_buffer)
         self.rollout_buffer.clear()
+        self.replay_buffer.buffer.clear() # to safe some memory
         return rollout
 
     # TODO make nicer and normalize intrinsic reward for comparisons??

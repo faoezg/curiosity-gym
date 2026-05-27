@@ -36,6 +36,7 @@ class ICMModel(IntrinsicMotivationModel):
                  icm_lr: float = 1e-3,
                  use_1d_cnn_encoder: bool = False,
                  use_cnn_encoder: bool = False,
+                 share_memory: bool = False
                  ):
         super().__init__()
         self.latent_rep_dim = latent_rep_dim
@@ -51,13 +52,26 @@ class ICMModel(IntrinsicMotivationModel):
                                       stride,
                                       use_1d_cnn_encoder,
                                       use_cnn_encoder).to(device)
-        self.optimizer = torch.optim.Adam([
-            {"params": self.icm_network.encoder_model.parameters(), "lr": 1e-3},
-            {"params": self.icm_network.forward_model.parameters(), "lr": 1e-3},
-            {"params": self.icm_network.invers_model.parameters(), "lr": 1e-3},
-        ])
-        #self.optimizer = torch.optim.Adam(self.icm_network.parameters())
-        #self.optimizer = torch.optim.SGD(self.icm_network.parameters())
+
+        self.use_cnn_encoder = use_cnn_encoder
+        if (share_memory):
+            self.icm_network.share_memory()
+            self.icm_network.encoder.encoder_model.share_memory()
+            self.optimizer = torch.optim.Adam([
+                {"params": self.icm_network.encoder.encoder_model.parameters(), "lr": 1e-3},
+                {"params": self.icm_network.forward_model.parameters(), "lr": 1e-3},
+                {"params": self.icm_network.invers_model.parameters(), "lr": 1e-3},
+            ])
+
+        else:
+            self.optimizer = torch.optim.Adam([
+                {"params": self.icm_network.encoder.encoder_model.parameters(), "lr": 1e-3},
+                {"params": self.icm_network.forward_model.parameters(), "lr": 1e-3},
+                {"params": self.icm_network.invers_model.parameters(), "lr": 1e-3},
+            ])
+            #self.optimizer = torch.optim.Adam(self.icm_network.parameters())
+            #self.optimizer = torch.optim.SGD(self.icm_network.parameters())
+
         self.action_dim = action_dim
         self.device = device
 
@@ -73,6 +87,10 @@ class ICMModel(IntrinsicMotivationModel):
             state_tensor = torch.tensor(state, dtype=torch.float32, device=self.icm_network.device).unsqueeze(0)
             next_state_tensor = torch.tensor(next_state, dtype=torch.float32, device=self.icm_network.device).unsqueeze(0)
             action_tensor = torch.tensor(action, dtype=torch.long, device=self.icm_network.device).unsqueeze(0)
+
+            if (self.use_cnn_encoder):
+                state_tensor /= 255.0
+                next_state_tensor /= 255.0
             _, phi_next, forward_pred, _ = self.icm_network.forward(state_tensor, next_state_tensor, action_tensor)
             intrinsic_reward = self.calc_forward_loss(forward_pred, phi_next).item()
             intrinsic_reward = self.icm_network.eta * intrinsic_reward
@@ -83,6 +101,9 @@ class ICMModel(IntrinsicMotivationModel):
         return 0.5 * F.mse_loss(forward_pred, next_state, reduction="mean")
     
     def calc_icm_loss(self, state: torch.Tensor, next_state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        if (self.use_cnn_encoder):
+            state /= 255.0
+            next_state /= 255.0
         _, phi_next, forward_pred, inv_logits = self.icm_network.forward(state, next_state, action)
 
         forward_loss = self.calc_forward_loss(forward_pred, phi_next) #* self.latent_rep_dim # scaling taken from the implementation provided by the paper
@@ -100,16 +121,19 @@ class ICMModel(IntrinsicMotivationModel):
             action_list.append(transition.action)
             next_state_list.append(transition.next_state)
 
-        state_tensor = torch.tensor(np.asarray(prev_state_list), dtype=torch.float32, device=self.icm_network.device)
+        state_tensor = torch.tensor(np.asarray(prev_state_list, dtype=np.uint8), dtype=torch.float32, device=self.icm_network.device)
         action_tensor = torch.tensor(np.asarray(action_list), dtype=torch.long, device=self.icm_network.device)
-        next_state_tensor = torch.tensor(np.asarray(next_state_list), dtype=torch.float32, device=self.icm_network.device)
+        next_state_tensor = torch.tensor(np.asarray(next_state_list, dtype=np.uint8), dtype=torch.float32, device=self.icm_network.device)
+        if (self.use_cnn_encoder):
+            state_tensor /= 255.0
+            next_state_tensor /= 255.0
 
         inv_loss, forward_loss = self.calc_icm_loss(state_tensor, next_state_tensor, action_tensor)
         icm_beta = self.icm_network.beta
         loss = (1 - icm_beta) * inv_loss + icm_beta * forward_loss
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.icm_network.parameters(), max_norm=2)
+        torch.nn.utils.clip_grad_norm_(self.icm_network.parameters(), max_norm=40)
         self.optimizer.step()
 
         return inv_loss.item(), forward_loss.item()

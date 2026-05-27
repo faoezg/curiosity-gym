@@ -551,15 +551,35 @@ class GridEngine(gym.Env, ABC):
         self.objects.agent.position = np.array(agent_pos)
         self.objects.agent.color = colour
         self.objects.agent.state = rotation
-        obs = self.agent_pov.transform_obs(self.get_state(), self.objects.agent)
-        if (self.env_settings.simple_obs):
-            obs = self._simplifiey_obs(obs)
+
+        if (not self.env_settings.use_rgb_state):
+            obs = self.agent_pov.transform_obs(self.get_state(), self.objects.agent)
+            if (self.env_settings.simple_obs):
+                obs = self._simplifiey_obs(obs)
+        else:
+            obs = self._render_frame(with_view_overlay=False)
 
         self.objects.agent.position = actual_agent_pos
         self.objects.agent.color = actual_agent_colour
         self.objects.agent.state = actual_agent_rotation
 
         return obs
+
+    def get_obs_by_state_and_agent_pos_as_rgb_state(self, agent_pos: tuple[int,int], colour: int, rotation: int) -> np.ndarray:
+        actual_agent_pos = self.objects.agent.position
+        actual_agent_colour = self.objects.agent.color
+        actual_agent_rotation = self.objects.agent.state
+        self.objects.agent.position = np.array(agent_pos)
+        self.objects.agent.color = colour
+        self.objects.agent.state = rotation
+        obs = self._render_frame(with_view_overlay=False)
+
+        self.objects.agent.position = actual_agent_pos
+        self.objects.agent.color = actual_agent_colour
+        self.objects.agent.state = actual_agent_rotation
+
+        return obs
+    
     
     def get_every_wakable_cor(self):
         walkable_cor = []
@@ -619,7 +639,11 @@ class GridEngine(gym.Env, ABC):
             return agent_pov
         
         if (self.env_settings.use_rgb_state):
-            rgb_state_size = self._render_frame(with_view_overlay=False).shape
+            tmp = self._render_frame(with_view_overlay=False)
+            if (tmp is not None):
+                rgb_state_size = tmp.shape
+            else:
+                rgb_state_size = None
         else:
             rgb_state_size = None
 
