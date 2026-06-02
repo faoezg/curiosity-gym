@@ -42,7 +42,7 @@ class LoggingWrapper(gym.Wrapper):
         self.last_n_extrinsic_rewards.append(self.total_episode_extrinsic_reward)
         self.total_episode_extrinsic_reward = 0
 
-        print("Episode Count:", self.episode_count)
+        print(f"Current Model: base_line, Current Env: {self.env.name}, Current Episode: {self.episode_count}")
 
         if (isinstance(self.env, MultitaskEnv) and self.episode_count >= self.max_episodes * 0.56 and self.env.task == 1): # should be after 280.000 trainin steps
             self.last_n_extrinsic_rewards_before_task_switch = self.last_n_extrinsic_rewards.copy()
