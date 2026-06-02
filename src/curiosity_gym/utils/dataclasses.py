@@ -83,7 +83,7 @@ class EnvironmentObjects:
     """
 
     agent: Agent
-    target: Target
+    target: Target | None
     walls: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=Wall))
     other: np.ndarray = field(
         default_factory=lambda: np.empty(0, dtype=GridObject)
@@ -107,6 +107,11 @@ class EnvironmentObjects:
         np.ndarray
             Numpy array containing all stored grid objects, except wall objects.
         """
-        return np.concatenate(
-            (np.array([self.target]), self.other, np.array([self.agent]))
-        )
+        if (self.target is not None):
+            return np.concatenate(
+                (np.array([self.target]), self.other, np.array([self.agent]))
+            )
+        else:
+            return np.concatenate(
+                (self.other, np.array([self.agent]))
+            )

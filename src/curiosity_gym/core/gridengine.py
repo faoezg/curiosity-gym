@@ -19,7 +19,7 @@ import seaborn as sns
 import math
 import random
 
-from curiosity_gym.core.objects import GridObject, Wall, ObjectState, Agent
+from curiosity_gym.core.objects import GridObject, Wall, ObjectState, Agent, Door, SmallReward, Key
 from curiosity_gym.core.pov import AgentPOV, GlobalView, LocalView, ForwardView
 from curiosity_gym.utils.enums import Action, SimplerAction
 from curiosity_gym.utils.dataclasses import (
@@ -243,7 +243,11 @@ class GridEngine(gym.Env, ABC):
             Auxiliary information about the internal state.
         """
         super().reset(**kwargs)
-        for ob in list(self.objects.other) + [self.objects.agent, self.objects.target]:
+        if (self.objects.target is not None):
+            obs_to_reset = list(self.objects.other) + [self.objects.agent, self.objects.target]
+        else:
+            obs_to_reset = list(self.objects.other) + [self.objects.agent]
+        for ob in obs_to_reset:
             ob.reset()
         self.step_count = 0
         self.pos_count[tuple(self.objects.agent.position)] += 1
@@ -295,9 +299,9 @@ class GridEngine(gym.Env, ABC):
             return self._render_frame()
         return None
     
-    def print_inital_env_state_as_pdf(self):
+    def print_inital_env_state_as_pdf(self, with_obj_id: bool = False):
         self.reset()
-        rgb = self.render()
+        rgb = self._render_frame(with_obj_id=with_obj_id)
         plt.figure(figsize=(rgb.shape[1] / 100, rgb.shape[0] / 100), dpi=100) # type: ignore
         plt.axis('off')
         plt.imshow(rgb) # type: ignore
@@ -544,7 +548,15 @@ class GridEngine(gym.Env, ABC):
             obs = self._simplifiey_obs(obs)
         return obs
     
-    def get_obs_by_state_and_agent_pos(self, agent_pos: tuple[int,int], colour: int, rotation: int) -> np.ndarray:
+    def get_obs_by_state_and_agent_pos(self,
+                                       agent_pos: tuple[int,int],
+                                       colour: int,
+                                       rotation: int,
+                                       open_doors: bool = False,
+                                       locked_doors: bool = True,
+                                       no_small_reward: bool = False,
+                                       no_keys: bool = False
+                                       ) -> tuple[np.ndarray | None, np.ndarray | None]:
         actual_agent_pos = self.objects.agent.position
         actual_agent_colour = self.objects.agent.color
         actual_agent_rotation = self.objects.agent.state
@@ -552,18 +564,49 @@ class GridEngine(gym.Env, ABC):
         self.objects.agent.color = colour
         self.objects.agent.state = rotation
 
+        if (open_doors):
+            for obj in self.objects.other:
+                if (isinstance(obj, Door)):
+                    obj.state = 0
+
+        if (not locked_doors):
+            for obj in self.objects.other:
+                if (isinstance(obj, Door)):
+                    obj.state = 1
+        
+        if (no_small_reward):
+            for obj in self.objects.other:
+                if (isinstance(obj, SmallReward)):
+                    obj.position = np.array([-5, -5])
+
+        if (no_keys):
+            for obj in self.objects.other:
+                if (isinstance(obj, Key)):
+                    obj.position = np.array([-5, -5])
+ 
+ 
         if (not self.env_settings.use_rgb_state):
             obs = self.agent_pov.transform_obs(self.get_state(), self.objects.agent)
             if (self.env_settings.simple_obs):
                 obs = self._simplifiey_obs(obs)
         else:
             obs = self._render_frame(with_view_overlay=False)
+        
+        frame = self._render_frame(with_view_overlay=True)
+
+        for obj in self.objects.other:
+            if (isinstance(obj, Door)):
+                obj.state = 2
+            if (isinstance(obj, SmallReward)):
+                obj.position = obj.start_position
+            if (isinstance(obj, Key)):
+                obj.position = obj.start_position
 
         self.objects.agent.position = actual_agent_pos
         self.objects.agent.color = actual_agent_colour
         self.objects.agent.state = actual_agent_rotation
 
-        return obs
+        return obs, frame
 
     def get_obs_by_state_and_agent_pos_as_rgb_state(self, agent_pos: tuple[int,int], colour: int, rotation: int) -> np.ndarray:
         actual_agent_pos = self.objects.agent.position
@@ -712,7 +755,7 @@ class GridEngine(gym.Env, ABC):
 
         raise ValueError(f"Invalid agent pov: {agent_pov}.")
 
-    def _render_frame(self, with_view_overlay: bool = True) -> np.ndarray | None:
+    def _render_frame(self, with_view_overlay: bool = True, with_obj_id: bool = False) -> np.ndarray | None:
         # Define canvas for new Frame
         pygame.init()
         window_size = (
@@ -726,6 +769,16 @@ class GridEngine(gym.Env, ABC):
         tilesize = window_size[0] / self.env_settings.width
         for ob in self.objects.get_all():
             ob.render(canvas, tilesize)
+            
+            if (with_obj_id):
+                id = ob.identifier if not self.env_settings.use_globaly_unique_id else ob.uid
+                font_size = int(tilesize) // 2
+                font = pygame.font.SysFont("freesansbold", font_size)
+                img = font.render(f"{id}", True, (255, 255, 255))
+                canvas.blit(
+                    img,
+                    pygame.Vector2(*((ob.position + np.array([0.275, 0.33])) * tilesize)),
+                )
 
         # Draw grid lines
         line_color = (210, 210, 210)

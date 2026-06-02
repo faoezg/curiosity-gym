@@ -4,7 +4,8 @@ import numpy as np
 
 # marker interface
 class IntrinsicMotivationModel(ABC):
-    def __init__(self) -> None:
+    def __init__(self, name) -> None:
+        self.name = name
         pass
 
     @abstractmethod

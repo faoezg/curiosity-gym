@@ -63,7 +63,7 @@ class DerailmentEnv(GridEngine):
 
         env_objects = EnvironmentObjects(
             agent=Agent((1, 1)),
-            target=Target((0,0), color=2),
+            target=None,
             walls=self.load_walls(wall_layout), # type: ignore
             other=other_objects,
         )
@@ -85,4 +85,4 @@ class DerailmentEnv(GridEngine):
         bool
             True if the agent is at the target position, False otherwise.
         """
-        return bool(np.all(self.objects.target.position == self.objects.agent.position))
+        return False

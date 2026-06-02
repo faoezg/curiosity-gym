@@ -41,6 +41,8 @@ class CoinFlipModel(IntrinsicMotivationModel):
 
         self.reset()
 
+        super().__init__("cfn")
+
     def _np_array_to_tensor(self, state: np.ndarray):
         return torch.tensor(state, dtype=torch.float32, device=self.device)
 

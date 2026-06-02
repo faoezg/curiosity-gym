@@ -2,17 +2,17 @@ from typing import override
 
 import numpy as np
 
-from curiosity_gym.core.objects import Agent, Target
+from curiosity_gym.core.objects import Agent, Target, Key, Door, Enemy
 from curiosity_gym.core.pov import AgentPOV
 from curiosity_gym.core.gridengine import GridEngine
-from curiosity_gym.utils.layout_generator import generate_detachment_wall_layout
+from curiosity_gym.utils.layout_generator import generate_test_wall_layout
 from curiosity_gym.utils.dataclasses import (
     EnvironmentSettings,
     RenderSettings,
     EnvironmentObjects,
 )
 
-class DetachmentEnv(GridEngine):
+class TestEnv(GridEngine):
 
     @override
     def __init__(
@@ -30,8 +30,8 @@ class DetachmentEnv(GridEngine):
         env_settings = EnvironmentSettings(
             min_steps=0,
             max_steps=500,
-            width=69, # 15x15 on each side
-            height=25,
+            width=9, # 15x15 on each side
+            height=3,
             reward_range=(0, 1),
             simple_actions=simple_actions,
             simple_obs=simple_obs,
@@ -47,17 +47,19 @@ class DetachmentEnv(GridEngine):
             ),
         )
 
+        wall_layout = generate_test_wall_layout(env_settings)
+
         other_objects = np.array([])
 
         env_objects = EnvironmentObjects(
-            agent=Agent((34, 12)),
+            agent=Agent((4, 1)),
             target=None,
-            walls=self.load_walls(generate_detachment_wall_layout(env_settings)),
+            walls=self.load_walls(wall_layout), # type: ignore
             other=other_objects,
         )
 
         super().__init__(
-            env_name = "detachment_environment",
+            env_name = "test_environment",
             env_settings=env_settings,
             render_settings=render_settings,
             env_objects=env_objects,

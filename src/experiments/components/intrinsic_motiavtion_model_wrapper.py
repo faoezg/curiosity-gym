@@ -63,7 +63,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.last_n_extrinsic_rewards.append(self.total_episode_extrinsic_reward)
         self.last_n_intrinsic_rewards.append(self.total_episode_intrinsic_reward)
 
-        print("Current Episode: ", self.episode_count)
+        print(f"Current Model: {self.intrinsic_model.name}, Current Env: {self.env.name}, Current Episode: {self.episode_count}")
 
         if not self.allow_global_state_reset or self.last_best_global_state is None:
             if (not self.use_rgb_state):
@@ -75,20 +75,21 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
 
         if (isinstance(self.env, GridEngine)):
             is_trainig_done = self.episode_count >= self.max_episodes or self.total_training_step >= self.max_training_steps
-            if (is_trainig_done and self.absolute_episode_count % 200 == 0):
+            if (is_trainig_done and (self.absolute_episode_count % 200 == 0 or self.total_training_step == self.max_training_steps)):
                 # TODO THINK ABOUT BYOL
-                # ORDER MATTERS BECOUSE OF AGENT STATE/COLOUR CHANGE ON RESET
                 if (not isinstance(self.intrinsic_model, ByolExploreModel)):
                     self.print_intrinsic_heatmap()
                 self._save_environment_heatmaps()
                 self._calc_stats()
-        
+
         self.total_episode_extrinsic_reward = 0
         self.total_episode_intrinsic_reward = 0
         self.training_step = 0
 
-        if (isinstance(self.env, MultitaskEnv) and self.absolute_episode_count >= self.max_episodes * 0.56 and self.env.task == 1): # should be after 280.000 trainin steps
+        if (isinstance(self.env, MultitaskEnv) and self.total_training_step >= self.max_training_steps * 0.56 and self.env.task == 1): # should be after 280.000 trainin steps
             self.last_n_extrinsic_rewards_before_task_switch = self.last_n_extrinsic_rewards.copy()
+            for value in list(self.last_n_extrinsic_rewards):
+                self.last_n_extrinsic_rewards_before_task_switch.append(value)
             self.env.task = 2 # switch task during training to see adaptation
             print("SWITCHED TASK")
 
@@ -191,10 +192,35 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         for cor in walkable_cor:
             cor_intrinsic_reward = 0
             for rotation in rotation_list:
-                obs = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation) # type: ignore
+                obs_doors_closed, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation, locked_doors=False) # type: ignore
+                obs_doors_open, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation, open_doors=True) # type: ignore
+                obs_doors_locked, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation) # type: ignore
+                obs_no_small_reward, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation, no_small_reward=True) # type: ignore
+                obs_no_key, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation, no_keys=True) # type: ignore
+
                 random_action = random.choice(action_list)
-                intrinsic_reward = self._get_intrinsic_reward_from_model_no_training(state=obs, action=random_action)
-                #cor_intrinsic_reward += intrinsic_reward
+                intrinsic_reward_doors_closed = self._get_intrinsic_reward_from_model_no_training(state=obs_doors_closed, action=random_action)
+                intrinsic_reward_doors_opened = self._get_intrinsic_reward_from_model_no_training(state=obs_doors_open, action=random_action)
+                intrinsic_reward_doors_locked = self._get_intrinsic_reward_from_model_no_training(state=obs_doors_locked, action=random_action)
+                intrinsic_reward_no_small_reward = self._get_intrinsic_reward_from_model_no_training(state=obs_no_small_reward, action=random_action)
+                intrinsic_reward_no_key = self._get_intrinsic_reward_from_model_no_training(state=obs_no_key, action=random_action)
+
+                intrinsic_reward = min(intrinsic_reward_doors_closed,
+                                       intrinsic_reward_doors_opened,
+                                       intrinsic_reward_doors_locked,
+                                       intrinsic_reward_no_small_reward,
+                                       intrinsic_reward_no_key
+                                       )
+                #if (intrinsic_reward > 0.07):
+                #    print(f"Closed: {intrinsic_reward_doors_closed}, Open: {intrinsic_reward_doors_opened}, Cor: {cor}, cor_rewar: {cor_intrinsic_reward}, rotation: {rotation}")
+                #    _, axes = plt.subplots(figsize=(self.env.env_settings.width, self.env.env_settings.height))
+                #    axes.imshow(frame, zorder=0) # type: ignore
+                #    figure = axes.get_figure()
+                #    if (figure is not None):
+                #        figure.savefig(f"tmp_{cor}_{round(intrinsic_reward)}_{rotation}.png")
+                #        figure.clear()
+                #        plt.close()
+
                 cor_intrinsic_reward = min(intrinsic_reward, cor_intrinsic_reward) if cor_intrinsic_reward > 0 else intrinsic_reward
             #intrinsic_reward = cor_intrinsic_reward / len(rotation_list)
             #total_reward += intrinsic_reward
@@ -212,8 +238,8 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
     def print_intrinsic_heatmap(self):
         intrinsic_maps, colours = self._calc_intrinsic_reward_map()
         for idx, map in enumerate(intrinsic_maps):
-            file_path = f"heatmaps/{self.env.name}_episode_{self.episode_count}_colour_{colours[idx]}_intrinsic_Heatmap.png"
-            overlay_file_path = f"heatmaps/{self.env.name}_episode_{self.episode_count}_colour_{colours[idx]}_intrinsic_Heatmap_overlay.png"
+            file_path = f"heatmaps/{self.intrinsic_model.name}_{self.env.name}_episode_{self.episode_count}_colour_{colours[idx]}_intrinsic_Heatmap.png"
+            overlay_file_path = f"heatmaps/{self.intrinsic_model.name}_{self.env.name}_episode_{self.episode_count}_colour_{colours[idx]}_intrinsic_Heatmap_overlay.png"
             raw_figure = self.env.heatmap_from_data(map)
             overlay_figure = self.env.overlay_heatmap_from_data(map)
             if (raw_figure is not None):
@@ -229,8 +255,8 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         plt.close()
 
     def _save_environment_heatmaps(self) -> None:
-        file_path = f"heatmaps/{self.env.name}_episode_{self.episode_count}_Heatmap.png"
-        overlay_file_path = f"heatmaps/{self.env.name}_episode_{self.episode_count}_Heatmap_overlay.png"
+        file_path = f"heatmaps/{self.intrinsic_model.name}_{self.env.name}_episode_{self.episode_count}_Heatmap.png"
+        overlay_file_path = f"heatmaps/{self.intrinsic_model.name}_{self.env.name}_episode_{self.episode_count}_Heatmap_overlay.png"
         figure = self.env.heatmap()
         overlay_figure = self.env.overlay_heatmap()
         if (figure is not None):
@@ -255,7 +281,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         avg_extrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_extrinsic_rewards]) / len(self.last_n_extrinsic_rewards)
         avg_intrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_intrinsic_rewards]) / len(self.last_n_intrinsic_rewards)
 
-        with open(f"stats_{self.env.name}_episode_{self.absolute_episode_count}.txt", "a") as f:
+        with open(f"stats_{self.intrinsic_model.name}_{self.env.name}_episode_{self.absolute_episode_count}.txt", "a") as f:
             f.write("############# STATS ################ \n")
             f.write(f"Lower Bound of visited Statespace: {lower_bound_visited_state_space} \n")
             f.write(f"Avg. ext. Reward over all Trainingsteps: {avg_extrinsic_reward} \n")

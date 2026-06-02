@@ -1,9 +1,10 @@
-from typing import override
+from typing import Any, override
 from collections import defaultdict
 import numpy as np
 
 from experiments.components import IntrinsicMotivationModel, RewardNormalizer
 
+# Given that this uses the actuall count as the pseudo_count, most of this statistics is actually not needed
 class UnifiedCountModel(IntrinsicMotivationModel):
     """
     Docstring for UnifiedCountModel
@@ -21,7 +22,7 @@ class UnifiedCountModel(IntrinsicMotivationModel):
                  ) -> None:
         self.possible_state_dim = possible_state_dim
         self.prior = pseudo_prior
-        self.visitation_dict = defaultdict(float) # ensures that unseen states return 0 when read 
+        self.visitation_dict = defaultdict(int) # ensures that unseen states return 0 when read 
         self.total_visited_states = 0
 
         self.beta = beta
@@ -29,6 +30,9 @@ class UnifiedCountModel(IntrinsicMotivationModel):
         self.clip_range = clip_range
 
         self.reward_normalizer = RewardNormalizer()
+
+        super().__init__("count_based")
+    
  
     @override
     def _train_network(self, state: np.ndarray) -> None:
@@ -38,16 +42,13 @@ class UnifiedCountModel(IntrinsicMotivationModel):
     
     def calc_visitation_prob(self, state: np.ndarray) -> float:
         state_key = state.tobytes()
-        log_prob = 0.0
-        log_prob += np.log(self._calc_cell_visitation_prob(state_key))
-        return np.exp(log_prob)
+        prob = self._calc_cell_visitation_prob(state_key)
+        return prob
 
     def calc_visitation_prob_after_observation(self, state: np.ndarray) -> float:
         state_key = state.tobytes()
-        log_prob = 0.0
-        # calc in log-space for stability on large state-spaces
-        log_prob += np.log(self._calc_cell_visitation_prob(state_key, 1))
-        return np.exp(log_prob)
+        prob = self._calc_cell_visitation_prob(state_key, 1)
+        return prob
     
     def _calc_cell_visitation_prob(self, state: bytes, observation_count: int = 0) -> float:
         """

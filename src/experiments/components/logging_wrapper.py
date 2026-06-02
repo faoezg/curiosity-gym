@@ -49,16 +49,15 @@ class LoggingWrapper(gym.Wrapper):
             self.env.task = 2 # switch task during training to see adaptation
             print("SWITCHED TASK")
 
-
-        if (self.episode_count >= self.max_episodes):
+        if (self.episode_count >= self.max_episodes and self.max_training_steps == self.training_step):
             self._save_environment_heatmaps()
             self._calc_stats()
 
         return obs, info
 
     def _save_environment_heatmaps(self) -> None:
-        file_path = f"{self.env.name}_Heatmap.png"
-        overlay_file_path = f"{self.env.name}_Heatmap_overlay.png"
+        file_path = f"baseline_{self.env.name}_Heatmap.png"
+        overlay_file_path = f"baseline_{self.env.name}_Heatmap_overlay.png"
         figure = self.env.heatmap()
         overlay_figure = self.env.overlay_heatmap()
         if (figure is not None):
@@ -82,10 +81,11 @@ class LoggingWrapper(gym.Wrapper):
         avg_extrinsic_reward = self.total_extrinsic_reward / self.training_step
         avg_extrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_extrinsic_rewards]) / len(self.last_n_extrinsic_rewards)
 
-        print("############# STATS ################")
-        print(f"Lower Bound of visited Statespace: {lower_bound_visited_state_space}")
-        print(f"Avg. ext. Reward over all Trainingsteps: {avg_extrinsic_reward}")
-        print(f"Avg. ext. Reward over last 10 Episodes: {avg_extrinsic_reward_last_10_episodes}")
-        if (self.last_n_extrinsic_rewards_before_task_switch is not None):
-            avg_extrinsic_reward_last_10_episodes_before_switch = sum([reward for reward in self.last_n_extrinsic_rewards_before_task_switch]) / len(self.last_n_extrinsic_rewards_before_task_switch)
-            print(f"Avg. ext. Reward over last 10 Episodes before Task switch: {avg_extrinsic_reward_last_10_episodes_before_switch}")
+        with open(f"baseline_stats_{self.env.name}_episode_{self.episode_count}.txt", "a") as f:
+            f.write("############# STATS ################ \n")
+            f.write(f"Lower Bound of visited Statespace: {lower_bound_visited_state_space} \n")
+            f.write(f"Avg. ext. Reward over all Trainingsteps: {avg_extrinsic_reward} \n")
+            f.write(f"Avg. ext. Reward over last 10 Episodes: {avg_extrinsic_reward_last_10_episodes} \n")
+            if (self.last_n_extrinsic_rewards_before_task_switch is not None):
+                avg_extrinsic_reward_last_10_episodes_before_switch = sum([reward for reward in self.last_n_extrinsic_rewards_before_task_switch]) / len(self.last_n_extrinsic_rewards_before_task_switch)
+                f.write(f"Avg. ext. Reward over last 10 Episodes before Task switch: {avg_extrinsic_reward_last_10_episodes_before_switch} \n")

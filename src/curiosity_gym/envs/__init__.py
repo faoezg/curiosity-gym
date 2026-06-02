@@ -47,3 +47,11 @@ gym.register(
         "render_mode": "rgb_array"
     }
 )
+
+gym.register(
+    id="TestEnv",
+    entry_point="curiosity_gym.envs.test_env:TestEnv",
+    kwargs={
+        "render_mode": "rgb_array"
+    }
+)

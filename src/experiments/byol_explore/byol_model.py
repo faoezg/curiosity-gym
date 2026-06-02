@@ -20,7 +20,7 @@ class ByolExploreModel(IntrinsicMotivationModel):
                  lambda_byol: float = 5.0, # lambda_byol in the paper
                  reward_norm_decay: float = 0.99
                 ) -> None:
-        super().__init__()
+        super().__init__("byolExplore")
         self.byol_network = ByolExploreNetwork(state_dim, action_dim, hidden_dim, latent_rep_dim, time_horizon, device, alpha).to(device)
         self.reward_normaliser = RewardNormaliser(decay=reward_norm_decay)
 

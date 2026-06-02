@@ -55,7 +55,8 @@ gym.register(
     entry_point="experiments.components.experiment_factory:make_experiment_env",
     kwargs={
         "base_env_id":"DetachmentEnv",
-        "max_episodes":1
+        "max_episodes":1000,
+        "max_training_steps": 500_000
     }
 )
 

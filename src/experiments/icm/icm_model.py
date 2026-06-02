@@ -38,7 +38,7 @@ class ICMModel(IntrinsicMotivationModel):
                  use_cnn_encoder: bool = False,
                  share_memory: bool = False
                  ):
-        super().__init__()
+        super().__init__("icm")
         self.latent_rep_dim = latent_rep_dim
         self.icm_network = ICMNetwork(device,
                                       state_dim,

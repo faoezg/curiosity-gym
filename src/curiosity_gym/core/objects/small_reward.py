@@ -65,7 +65,7 @@ class SmallReward(GridObject):
             object, 0 otherwise.
         """
         if front_object == self:
-            self.position = np.array([-1, -1])
+            self.position = np.array([-5, -5])
             return self.reward
         return 0
 

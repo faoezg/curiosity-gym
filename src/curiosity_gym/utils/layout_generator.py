@@ -1,6 +1,15 @@
 import numpy as np
 from .dataclasses import EnvironmentSettings
 
+def generate_test_wall_layout(env_settings: EnvironmentSettings, walkable_width: int = 1) -> np.ndarray:
+    width = env_settings.width
+    height = env_settings.height
+    shell = _generate_shell(width, height)
+
+    layout = shell
+    
+    return np.array(layout)
+
 def generate_detachment_wall_layout(env_settings: EnvironmentSettings, walkable_width: int = 3) -> np.ndarray:
     width = env_settings.width
     height = env_settings.height
@@ -12,12 +21,12 @@ def generate_detachment_wall_layout(env_settings: EnvironmentSettings, walkable_
     return np.array(layout)
 
 def _generate_shell(env_width: int, env_height: int) -> list[tuple[int,int]]: # TODO extend for variable shell width?
-    top = [(col, 0) for col in range(env_width)]
-    bottom = [(col, env_height-1) for col in range(env_width)]
+    top = [(col, 0) for col in range(1,env_width-1)]
+    bottom = [(col, env_height-1) for col in range(1,env_width-1)]
     right = [(env_width-1, row) for row in range(env_height)]
     left = [(0, row) for row in range(env_height)]
 
-    shell = top + right + bottom + left 
+    shell = top + bottom + right + left 
     return shell
 
 def _generate_middle_section(env_width: int, env_height: int, walkable_width: int) -> list[tuple[int,int]]:
