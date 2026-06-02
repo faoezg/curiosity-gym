@@ -252,7 +252,8 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                 # TODO make proper error?
                 print("Exporting Heatmaps failed, as no figure was able to be created")
 
-        plt.close()
+            plt.close(raw_figure)
+            plt.close(overlay_figure)
 
     def _save_environment_heatmaps(self) -> None:
         file_path = f"heatmaps/{self.intrinsic_model.name}_{self.env.name}_episode_{self.episode_count}_Heatmap.png"
@@ -269,8 +270,9 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             # TODO make proper error?
             print("Exporting Heatmaps failed, as no figure was able to be created")
 
-        plt.close()
-    
+        plt.close(figure)
+        plt.close(overlay_figure)
+
     def _calc_stats(self):
         walkable_cords = self.env.get_every_wakable_cor()
         total_visited_states = 0

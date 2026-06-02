@@ -70,7 +70,7 @@ class LoggingWrapper(gym.Wrapper):
             # TODO make proper error?
             print("Exporting Heatmaps failed, as no figure was able to be created")
 
-        plt.close()
+        plt.close(figure)
 
     def _calc_stats(self):
         walkable_cords = self.env.get_every_wakable_cor()
