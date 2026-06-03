@@ -44,12 +44,14 @@ class LoggingWrapper(gym.Wrapper):
 
         print(f"Current Model: base_line, Current Env: {self.env.name}, Current Episode: {self.episode_count}")
 
-        if (isinstance(self.env, MultitaskEnv) and self.episode_count >= self.max_episodes * 0.56 and self.env.task == 1): # should be after 280.000 trainin steps
+        if (isinstance(self.env, MultitaskEnv) and self.training_step >= self.max_training_steps * 0.56 and self.env.task == 1): # should be after 280.000 trainin steps
             self.last_n_extrinsic_rewards_before_task_switch = self.last_n_extrinsic_rewards.copy()
+            for value in list(self.last_n_extrinsic_rewards):
+                self.last_n_extrinsic_rewards_before_task_switch.append(value)
             self.env.task = 2 # switch task during training to see adaptation
             print("SWITCHED TASK")
 
-        if (self.episode_count >= self.max_episodes and self.max_training_steps == self.training_step):
+        if (self.max_training_steps <= self.training_step or self.max_episodes <= self.episode_count):
             self._save_environment_heatmaps()
             self._calc_stats()
 

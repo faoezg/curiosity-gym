@@ -1,3 +1,4 @@
+import time
 from experiments.clean_rl import Args, run_clean_rl_ppo_model, AtariArgs, run_clean_rl_ppo_atari_model
 from curiosity_gym import DistractiveEnv, SparseEnv, SimpleSparseEnv, MultitaskEnv, DetachmentEnv, DerailmentEnv
 from curiosity_gym.core.gridengine import GridEngine 
@@ -19,8 +20,10 @@ print("Running own models on: ", DEVICE)
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 
-ENV_PREFIXES = ["DistractiveEnv", "MultitaskEnv", "SparseEnv", "SimpleSparseEnv", "DetachmentEnv", "DerailmentEnv"]
-MODELS_SUFFIXES = ["Experiment", "UnifiedCount", "CoinFlip", "Icm", "ByolExplore"]
+#ENV_PREFIXES = ["DistractiveEnv", "MultitaskEnv", "SparseEnv", "SimpleSparseEnv", "DetachmentEnv", "DerailmentEnv"]
+ENV_PREFIXES = ["MultitaskEnv"]
+#MODELS_SUFFIXES = ["Experiment", "UnifiedCount", "CoinFlip", "Icm", "ByolExplore"]
+MODELS_SUFFIXES = ["Experiment"]
 
 
 def tmp():
@@ -29,5 +32,7 @@ def tmp():
             vec_env =  make_vec_env(f"{prefix}-{suffix}", n_envs=1)
             model = PPO("MlpPolicy", vec_env, verbose=0, device="cpu")
             model.learn(total_timesteps=500_000)
+            time.sleep(30) # wait till all I/O Operations finish
+            vec_env.close()
 
 tmp()

@@ -28,8 +28,8 @@ def make_experiment_env(
 
     new_env = LoggingWrapper(
         env=raw_env,
-        training_steps=raw_env.unwrapped.env_settings.max_steps,
-        training_episodes=max_episodes
+        training_steps=max_training_steps,
+        training_episodes=max_episodes,
         )
 
     new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 1000 == 0)
