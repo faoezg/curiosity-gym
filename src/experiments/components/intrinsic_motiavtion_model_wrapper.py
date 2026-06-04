@@ -73,14 +73,14 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         else:
             obs, info = self.env.reset_to_specific_global_state(self.last_best_global_state, **kwargs)
 
-        if (isinstance(self.env, GridEngine)):
-            is_trainig_done = self.episode_count >= self.max_episodes or self.total_training_step >= self.max_training_steps
-            if (is_trainig_done and (self.absolute_episode_count % 200 == 0 or self.total_training_step == self.max_training_steps)):
-                # TODO THINK ABOUT BYOL
-                if (not isinstance(self.intrinsic_model, ByolExploreModel)):
-                    self.print_intrinsic_heatmap()
-                self._save_environment_heatmaps()
-                self._calc_stats()
+        #if (isinstance(self.env, GridEngine)):
+        #    is_trainig_done = self.episode_count >= self.max_episodes or self.total_training_step >= self.max_training_steps
+        #    if (is_trainig_done and (self.absolute_episode_count % 200 == 0 or self.total_training_step == self.max_training_steps)):
+        #        # TODO THINK ABOUT BYOL
+        #        if (not isinstance(self.intrinsic_model, ByolExploreModel)):
+        #            self.print_intrinsic_heatmap()
+        #        self._save_environment_heatmaps()
+        #        self._calc_stats()
 
         self.total_episode_extrinsic_reward = 0
         self.total_episode_intrinsic_reward = 0
@@ -203,20 +203,26 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             cor_intrinsic_reward = 0
             for rotation in rotation_list:
                 obs_doors_closed, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation, locked_doors=False) # type: ignore
+                obs_doors_closed_no_key, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation, locked_doors=False, no_keys=True) # type: ignore
                 obs_doors_open, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation, open_doors=True) # type: ignore
+                obs_doors_open_no_key, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation, open_doors=True, no_keys=True) # type: ignore
                 obs_doors_locked, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation) # type: ignore
                 obs_no_small_reward, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation, no_small_reward=True) # type: ignore
                 obs_no_key, frame = self.env.get_obs_by_state_and_agent_pos(cor, colour, rotation, no_keys=True) # type: ignore
 
                 random_action = random.choice(action_list)
                 intrinsic_reward_doors_closed = self._get_intrinsic_reward_from_model_no_training(state=obs_doors_closed, action=random_action)
+                intrinsic_reward_doors_closed_no_key = self._get_intrinsic_reward_from_model_no_training(state=obs_doors_closed_no_key, action=random_action)
                 intrinsic_reward_doors_opened = self._get_intrinsic_reward_from_model_no_training(state=obs_doors_open, action=random_action)
+                intrinsic_reward_doors_opened_no_key = self._get_intrinsic_reward_from_model_no_training(state=obs_doors_open_no_key, action=random_action)
                 intrinsic_reward_doors_locked = self._get_intrinsic_reward_from_model_no_training(state=obs_doors_locked, action=random_action)
                 intrinsic_reward_no_small_reward = self._get_intrinsic_reward_from_model_no_training(state=obs_no_small_reward, action=random_action)
                 intrinsic_reward_no_key = self._get_intrinsic_reward_from_model_no_training(state=obs_no_key, action=random_action)
 
                 intrinsic_reward = min(intrinsic_reward_doors_closed,
+                                       intrinsic_reward_doors_closed_no_key,
                                        intrinsic_reward_doors_opened,
+                                       intrinsic_reward_doors_opened_no_key,
                                        intrinsic_reward_doors_locked,
                                        intrinsic_reward_no_small_reward,
                                        intrinsic_reward_no_key
