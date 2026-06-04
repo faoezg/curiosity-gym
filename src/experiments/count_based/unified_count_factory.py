@@ -38,6 +38,6 @@ def make_unified_count_env(
         max_episodes=max_episodes)
 
     new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 1000 == 0)
-    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{unified_count_model.name}_{raw_env.name}", episode_trigger=lambda x: x % 1000 == 0)
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{unified_count_model.name}_{raw_env.unwrapped.name}", episode_trigger=lambda x: x % 1000 == 0)
 
     return new_env
