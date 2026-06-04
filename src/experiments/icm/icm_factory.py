@@ -74,6 +74,6 @@ def make_icm_env(
         rank=rank
     )
 
-    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 1000 == 0)
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{icm.name}_{raw_env.name}", episode_trigger=lambda x: x % 1000 == 0)
 
     return new_env

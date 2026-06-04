@@ -20,10 +20,9 @@ print("Running own models on: ", DEVICE)
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 
-#ENV_PREFIXES = ["DistractiveEnv", "MultitaskEnv", "SparseEnv", "SimpleSparseEnv", "DetachmentEnv", "DerailmentEnv"]
-ENV_PREFIXES = ["MultitaskEnv"]
+ENV_PREFIXES = ["DistractiveEnv", "MultitaskEnv", "SparseEnv", "SimpleSparseEnv", "DetachmentEnv", "DerailmentEnv"]
 #MODELS_SUFFIXES = ["Experiment", "UnifiedCount", "CoinFlip", "Icm", "ByolExplore"]
-MODELS_SUFFIXES = ["Experiment"]
+MODELS_SUFFIXES = ["Icm", "ByolExplore"]
 
 
 def tmp():

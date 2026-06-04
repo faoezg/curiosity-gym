@@ -51,11 +51,19 @@ class LoggingWrapper(gym.Wrapper):
             self.env.task = 2 # switch task during training to see adaptation
             print("SWITCHED TASK")
 
-        if (self.max_training_steps <= self.training_step or self.max_episodes <= self.episode_count):
+        if (self.max_training_steps == self.training_step):
             self._save_environment_heatmaps()
             self._calc_stats()
 
         return obs, info
+    
+    def close(self) -> None:
+        self.env.reset()
+        print("DONE TRAINING")
+        self._save_environment_heatmaps()
+        self._calc_stats()
+
+        return super().close()
 
     def _save_environment_heatmaps(self) -> None:
         file_path = f"baseline_{self.env.name}_Heatmap.png"
@@ -73,6 +81,7 @@ class LoggingWrapper(gym.Wrapper):
             print("Exporting Heatmaps failed, as no figure was able to be created")
 
         plt.close(figure)
+        plt.close(overlay_figure)
 
     def _calc_stats(self):
         walkable_cords = self.env.get_every_wakable_cor()

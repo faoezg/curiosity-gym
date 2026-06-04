@@ -97,6 +97,14 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.prev_state = obs # type: ignore
         return obs, info # type: ignore
 
+    def close(self) -> None:
+        self.env.reset()
+        print("DONE TRAINING")
+        self._save_environment_heatmaps()
+        self._calc_stats()
+
+        return super().close()
+
     def step(self, action):
         if (isinstance(self.env, GridEngine)):
             if (not self.use_rgb_state):

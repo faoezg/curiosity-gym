@@ -48,6 +48,6 @@ def make_coin_flip_env(
         max_training_steps=max_training_steps,
         max_episodes=max_episodes)
 
-    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 1000 == 0)
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{cfm.name}_{raw_env.name}", episode_trigger=lambda x: x % 1000 == 0)
 
     return new_env
