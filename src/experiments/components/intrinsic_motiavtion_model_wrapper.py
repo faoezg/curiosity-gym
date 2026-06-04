@@ -100,6 +100,8 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
     def close(self) -> None:
         self.env.reset()
         print("DONE TRAINING")
+        if (not isinstance(self.intrinsic_model, ByolExploreModel)):
+            self.print_intrinsic_heatmap()
         self._save_environment_heatmaps()
         self._calc_stats()
 

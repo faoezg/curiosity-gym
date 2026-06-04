@@ -22,7 +22,7 @@ from stable_baselines3.common.env_util import make_vec_env
 
 ENV_PREFIXES = ["DistractiveEnv", "MultitaskEnv", "SparseEnv", "SimpleSparseEnv", "DetachmentEnv", "DerailmentEnv"]
 #MODELS_SUFFIXES = ["Experiment", "UnifiedCount", "CoinFlip", "Icm", "ByolExplore"]
-MODELS_SUFFIXES = ["Icm", "ByolExplore"]
+MODELS_SUFFIXES = ["ByolExplore"]
 
 
 def tmp():
