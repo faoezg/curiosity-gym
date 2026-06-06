@@ -69,4 +69,5 @@ def tmp():
     model = PPO("MlpPolicy", vec_env, verbose=0, device="cpu")
     model.learn(total_timesteps=500_000)
 
+    vec_env.close()
 tmp()

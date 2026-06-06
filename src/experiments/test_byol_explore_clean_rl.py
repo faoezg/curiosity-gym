@@ -42,4 +42,5 @@ def tmp():
     vec_env =  make_vec_env("SimpleSparseEnv-ByolExplore", n_envs=1)
     model = PPO("MlpPolicy", vec_env, verbose=0, device="cpu", n_steps=64)
     model.learn(total_timesteps=500_000)
+    vec_env.close()
 tmp()
