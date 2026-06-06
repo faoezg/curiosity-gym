@@ -5,6 +5,7 @@ tmp/*
 external/*
 pull_results.sh
 stats_*
+figures/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

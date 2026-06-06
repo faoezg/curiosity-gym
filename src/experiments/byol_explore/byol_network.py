@@ -34,7 +34,7 @@ class ByolExploreNetwork(nn.Module):
 
         h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_encoding)
         #h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_buffer)
-        byol_loss, intrinsic_rewards = self._calc_loss_and_intrinsic_rewards(B, T, h_closed_hist, action_buffer, state_buffer)
+        byol_loss, intrinsic_rewards = self._calc_loss_and_intrinsic_rewards(B, T, C, h_closed_hist, action_buffer, state_buffer)
 
         return byol_loss, intrinsic_rewards
 
@@ -51,6 +51,7 @@ class ByolExploreNetwork(nn.Module):
     def _calc_loss_and_intrinsic_rewards(self,
                                          batch_dim: int,
                                          end_time: int,
+                                         channel: int,
                                          h_hist: torch.Tensor,
                                          action_buffer: torch.Tensor,
                                          state_buffer: torch.Tensor) -> tuple[torch.Tensor | float, torch.Tensor]:
@@ -71,15 +72,14 @@ class ByolExploreNetwork(nn.Module):
             pred = self.predictor_model(h_open)
 
             with torch.no_grad():
-                target_encoded = self.target_encoder_model(state_buffer[:, k].flatten())
+                target_encoded = self.target_encoder_model(state_buffer[:, k].view(batch_dim * k, channel)).view(batch_dim, self.latent_rep_dim)
             
             pred_normalised = F.normalize(pred, dim=-1)
             target_normalised = F.normalize(target_encoded, dim=-1)
             timestep_loss = 2 - 2 * (pred_normalised * target_normalised).sum(dim=-1) # cos-similarity is the dot-product of two unit vectors
             cos_loss += timestep_loss.mean() # take the mean as batch size is not fixed
             count += 1
-
-            intrinsic_rewards[:, 0] = intrinsic_rewards[:, 0] + timestep_loss
+            intrinsic_rewards[:, k] += timestep_loss
 
         byol_loss = cos_loss / max(count, 1) # average by k, but count is not necessarily non-zero
         return byol_loss, intrinsic_rewards

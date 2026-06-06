@@ -10,7 +10,7 @@ def make_coin_flip_env(
     base_env_id: str = "SparseEnv",
     base_env_pov: str = "local_2",
     device: str = "cpu",
-    reward_scale: float = 0.01,
+    reward_scale: float = 10,
     hidden_dim: int = 300,
     d_dim: int = 20,
     priority_alpha: float = 0.5,

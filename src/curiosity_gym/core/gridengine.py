@@ -19,7 +19,7 @@ import seaborn as sns
 import math
 import random
 
-from curiosity_gym.core.objects import GridObject, Wall, ObjectState, Agent, Door, SmallReward, Key
+from curiosity_gym.core.objects import GridObject, Wall, ObjectState, Agent, Door, SmallReward, Key, RandomBlock
 from curiosity_gym.core.pov import AgentPOV, GlobalView, LocalView, ForwardView
 from curiosity_gym.utils.enums import Action, SimplerAction
 from curiosity_gym.utils.dataclasses import (
@@ -527,7 +527,7 @@ class GridEngine(gym.Env, ABC):
                 return True
         return False
 
-    def _check_walkable(self, position: np.ndarray | tuple[int, int]) -> bool:
+    def _check_walkable(self, position: np.ndarray | tuple[int, int], ignore_dynamic_objs: bool = False) -> bool:
         inbounds_horizontal = 0 < position[0] < self.env_settings.width
         inbounds_vertical = 0 < position[1] < self.env_settings.height
 
@@ -535,8 +535,12 @@ class GridEngine(gym.Env, ABC):
             return False
 
         for ob in self.objects.get_all():
-            if np.all(ob.position == position) and not ob.is_walkable():
-                return False
+            if np.all(ob.position == position):
+                if (ignore_dynamic_objs and not isinstance(ob, Wall) and not isinstance(ob, RandomBlock)):
+                    return True
+
+                if (not ob.is_walkable()):
+                    return False
         return True
 
     def _get_info(self) -> dict[str, Any]:
@@ -629,7 +633,7 @@ class GridEngine(gym.Env, ABC):
         for x in range(self.env_settings.width):
             for y in range(self.env_settings.height):
                 cor = (x,y)
-                if (self._check_walkable(cor)):
+                if (self._check_walkable(cor, ignore_dynamic_objs=True)):
                     walkable_cor.append(cor)
         return walkable_cor
 

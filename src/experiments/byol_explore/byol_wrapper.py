@@ -15,7 +15,8 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         intrinsic_reset_threshold: float = 0.5,
         allow_global_state_reset: bool = False,
         max_training_steps: int = 500,
-        max_episodes: int = 1000
+        max_episodes: int = 1000,
+        batch_dim = 32
     ):
         super().__init__(env, byol_explore_model,
                          device,
@@ -24,7 +25,10 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
                          max_training_steps,
                          max_episodes)
         self.intrinsic_model: ByolExploreModel = self.intrinsic_model
-        self.buffer = ReplayBuffer(size=self.intrinsic_model.byol_network.time_horizon + 1)
+        self.batch_dim = batch_dim
+
+        buffer_size = self.intrinsic_model.byol_network.time_horizon * batch_dim
+        self.buffer = ReplayBuffer(size=buffer_size)
 
     def step(self, action):
         if (isinstance(self.env, GridEngine)):
@@ -48,9 +52,22 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         else:
             reward = extrinsic_reward
             intrinsic_reward = 0.0
+            self.all_intrinsisc_rewards.append(intrinsic_reward)
+
+        self.all_extrinsisc_rewards.append(extrinsic_reward)
+
+        if (isinstance(self.env, GridEngine)):
+            self.state_space_visited[self.env.objects.agent.position.tobytes()] = 1
+            self.all_visited_cell_counts_by_step.append(len(self.state_space_visited))
+
+        self.total_extrinsic_reward += extrinsic_reward # type: ignore
+        
+        self._log_training(extrinsic_reward, intrinsic_reward)
         
         info["extrinsic_reward"] = extrinsic_reward
+        self.total_episode_extrinsic_reward += extrinsic_reward # type: ignore
         info["intrinsic_reward"] = intrinsic_reward
+        self.total_episode_intrinsic_reward += intrinsic_reward
         info["total_reward"] = reward 
 
         self.prev_state = state
@@ -64,19 +81,22 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         actions = []
         samples = self.buffer.buffer # not sampling as that breaks causality
 
-        for transition in samples:
-            state_tensor = torch.from_numpy(transition.next_state)
-            state_tensors.append(state_tensor)
-            actions.append(transition.action)
+        for batch in zip(*(iter(samples),) * self.intrinsic_model.byol_network.time_horizon):
+            batch_state_list = []
+            batch_action_list = []
+            for transition in batch:
+                state_tensor = torch.from_numpy(transition.next_state)
+                batch_state_list.append(state_tensor)
+                batch_action_list.append(transition.action)
+            state_tensors.append(torch.stack(batch_state_list, dim=0).to(self.device))
+            actions.append(torch.tensor(batch_action_list, dtype=torch.long, device=self.device))
 
-        state_buffer = torch.stack(state_tensors, dim=0).unsqueeze(0) # (B=1, T=2, N, 3)
+        state_buffer = torch.stack(state_tensors, dim=0) # (B, T=2, N)
         state_buffer = state_buffer.to(torch.float32).to(self.device)
 
-        action_buffer = torch.tensor(
+        action_buffer = torch.stack(
             actions,
-            dtype=torch.long,
-            device=self.device,
-        ).unsqueeze(0) # (B=1, T=2)
+        ).to(self.device) # (B, T=2)
 
         return state_buffer, action_buffer
 

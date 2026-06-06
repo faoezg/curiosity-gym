@@ -14,9 +14,9 @@ class CoinFlipModel(IntrinsicMotivationModel):
                  hidden_dim: int = 32,
                  d_dim: int = 10,
                  reward_scale: float = 0.8, # set it high, as extrnsic is sparse in experiments
-                 batch_size: int = 1000,
-                 buffer_size: int = 10000,
-                 min_req_buffer_population: int = 1000,
+                 batch_size: int = 32,
+                 buffer_size: int = 1000,
+                 min_req_buffer_population: int = 32,
                  priority_alpha: float = 0.5,
                  update_period: int = 1,
                  p_replace: float = 1.0,

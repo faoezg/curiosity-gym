@@ -29,7 +29,8 @@ def make_unified_count_env(
 
     unified_count_model = UnifiedCountModel(raw_env.observation_space.shape[0] ** 2, # type: ignore
                                             clip_range=0,
-                                            eps=0.5)
+                                            eps=0.5,
+                                            beta=1)
     new_env = UnifiedCountWrapper(
         env=raw_env,
         count_model=unified_count_model,
@@ -37,7 +38,6 @@ def make_unified_count_env(
         max_training_steps=max_training_steps,
         max_episodes=max_episodes)
 
-    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", episode_trigger=lambda x: x % 1000 == 0)
     new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{unified_count_model.name}_{raw_env.unwrapped.name}", episode_trigger=lambda x: x % 1000 == 0)
 
     return new_env

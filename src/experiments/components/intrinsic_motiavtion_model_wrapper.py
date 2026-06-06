@@ -17,6 +17,7 @@ from curiosity_gym.core.objects import Key
 from .intrinsic_motiavtion_model import IntrinsicMotivationModel
 from experiments.byol_explore.byol_model import ByolExploreModel
 from experiments.components import ReplayBuffer, Transition
+from experiments.components.plotter import Plotter
 
 class IntrinsicMotivationModelWrapper(gym.Wrapper):
     def __init__(self,
@@ -56,6 +57,12 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.last_n_intrinsic_rewards = deque(maxlen=10)
         self.last_n_extrinsic_rewards_before_task_switch = None
         self.writer = SummaryWriter()
+        self.plotter = Plotter()
+        self.all_extrinsisc_rewards = []
+        self.all_intrinsisc_rewards = []
+        self.all_visited_cell_counts_by_step = []
+
+        self.all_walkable_cords = self.env.get_every_wakable_cor()
 
     def reset(self, **kwargs):
         self.episode_count += 1
@@ -104,6 +111,13 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             self.print_intrinsic_heatmap()
         self._save_environment_heatmaps()
         self._calc_stats()
+        exploration_fig = self._make_exploration_fig()
+        ext_fig, int_fig = self._make_reward_figs()
+        self.plotter.print_figure(exploration_fig, f"{self.intrinsic_model.name}_{self.env.name}_exploration")
+        self.plotter.print_figure(ext_fig, f"{self.intrinsic_model.name}_{self.env.name}_ext_reward")
+        self.plotter.print_figure(int_fig, f"{self.intrinsic_model.name}_{self.env.name}_int_reward")
+
+        self.writer.close()
 
         return super().close()
 
@@ -116,6 +130,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                 raw_global_state = None
         else:
             state, extrinsic_reward, terminated, truncated, info = self.env.step(action)
+        self.all_extrinsisc_rewards.append(extrinsic_reward)
         self._store_transition(self.prev_state, action, extrinsic_reward, state)
         intrinsic_reward = self._get_intrinsic_reward_from_model(state=state, action=action)
 
@@ -132,11 +147,11 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
 
         if (isinstance(self.env, GridEngine)):
             self.state_space_visited[self.env.objects.agent.position.tobytes()] = 1
+            self.all_visited_cell_counts_by_step.append(len(self.state_space_visited))
 
         self.total_extrinsic_reward += extrinsic_reward # type: ignore
 
-        self.writer.add_scalar("Reward/Intrinsic", intrinsic_reward, self.total_training_step)
-        self.writer.add_scalar("Reward/Extrinsic", extrinsic_reward, self.total_training_step)
+        self._log_training(extrinsic_reward, intrinsic_reward)
 
         self.prev_state = state
         self.training_step += 1
@@ -150,6 +165,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         elif (intrinsic_reward >= self.last_best_intrinsic_reward):
             self.last_best_intrinsic_reward = intrinsic_reward
             self.last_best_global_state = raw_global_state
+        self.all_intrinsisc_rewards.append(intrinsic_reward)
 
     @abstractmethod
     def _get_intrinsic_reward_from_model(self, *args, **kwargs) -> float | Any:
@@ -290,11 +306,10 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         plt.close(overlay_figure)
 
     def _calc_stats(self):
-        walkable_cords = self.env.get_every_wakable_cor()
         total_visited_states = 0
-        for cord in walkable_cords:
+        for cord in self.all_walkable_cords:
             total_visited_states += self.state_space_visited[np.array(cord).tobytes()]
-        lower_bound_visited_state_space = total_visited_states / len(walkable_cords)
+        lower_bound_visited_state_space = total_visited_states / len(self.all_walkable_cords)
         avg_extrinsic_reward = self.total_extrinsic_reward / self.training_step
         avg_extrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_extrinsic_rewards]) / len(self.last_n_extrinsic_rewards)
         avg_intrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_intrinsic_rewards]) / len(self.last_n_intrinsic_rewards)
@@ -318,3 +333,41 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         with open(f"stats_{self.env.name}_episode_{self.absolute_episode_count}_training.txt", "a") as f:
             f.write(f"############# STATS for Step {self.total_training_step} ################ \n")
             f.write(f"Intrinsic Reward {intrinsic_reward} \n")
+
+    def _log_training(self, extrinsic_reward, intrinsic_reward):
+        self.writer.add_scalar("Reward/Intrinsic", intrinsic_reward, self.total_training_step)
+        self.writer.add_scalar("Reward/Extrinsic", extrinsic_reward, self.total_training_step)
+        self.writer.add_scalars("Exploration/Zellen", 
+                            {
+                                "Zellen":len(self.state_space_visited),
+                                    "Alle Zellen": len(self.all_walkable_cords)
+                                }, self.total_training_step)
+
+    def _make_exploration_fig(self):
+        return self.plotter.make_exploration_figure(
+            self.all_visited_cell_counts_by_step,
+            [len(self.all_walkable_cords)] * (self.total_training_step),
+            list(range(self.total_training_step)),
+            "Explorationsverlauf"
+        )
+
+    def _make_reward_figs(self):
+        with_marker = False
+        if (self.total_extrinsic_reward > 0.0):
+            with_marker = True
+
+        ext_fig = self.plotter.make_reward_figure(
+                    self.all_extrinsisc_rewards,
+                    list(range(self.total_training_step)),
+                    "Extrinsische Belohnung über alle Trainingsschritte",
+                    "ext.",
+                    with_marker
+                )
+        int_fig = self.plotter.make_reward_figure(
+                self.all_intrinsisc_rewards,
+                list(range(self.total_training_step)),
+                "Intrinsische Belohnung über alle Trainingsschritte",
+                "int."
+            )
+        
+        return ext_fig, int_fig
