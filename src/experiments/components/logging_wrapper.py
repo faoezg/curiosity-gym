@@ -7,6 +7,8 @@ from curiosity_gym.core.gridengine import GridEngine
 from curiosity_gym.envs.multitaskenv import MultitaskEnv
 import matplotlib.pyplot as plt
 
+from experiments.components.plotter import Plotter
+
 class LoggingWrapper(gym.Wrapper):
     def __init__(self, env: GridEngine, training_steps: int, training_episodes: int):
         super().__init__(env)
@@ -21,6 +23,10 @@ class LoggingWrapper(gym.Wrapper):
         self.total_episode_extrinsic_reward = 0
         self.last_n_extrinsic_rewards = deque(maxlen=10)
         self.last_n_extrinsic_rewards_before_task_switch = None
+        self.all_visited_cell_counts_by_step = []
+        self.plotter = Plotter()
+
+        self.all_walkable_cords = self.env.get_every_wakable_cor()
 
     @override
     def step(self, action):
@@ -32,6 +38,7 @@ class LoggingWrapper(gym.Wrapper):
         self.total_episode_extrinsic_reward += extrinsic_reward # type: ignore
         if (isinstance(self.env, GridEngine)):
             self.state_space_visited[self.env.objects.agent.position.tobytes()] = 1
+            self.all_visited_cell_counts_by_step.append(len(self.state_space_visited))
 
         return state, extrinsic_reward, terminated, truncated, info
 
@@ -62,6 +69,7 @@ class LoggingWrapper(gym.Wrapper):
         print("DONE TRAINING")
         self._save_environment_heatmaps()
         self._calc_stats()
+        self._make_exploration_fig()
 
         return super().close()
 
@@ -100,3 +108,11 @@ class LoggingWrapper(gym.Wrapper):
             if (self.last_n_extrinsic_rewards_before_task_switch is not None):
                 avg_extrinsic_reward_last_10_episodes_before_switch = sum([reward for reward in self.last_n_extrinsic_rewards_before_task_switch]) / len(self.last_n_extrinsic_rewards_before_task_switch)
                 f.write(f"Avg. ext. Reward over last 10 Episodes before Task switch: {avg_extrinsic_reward_last_10_episodes_before_switch} \n")
+
+    def _make_exploration_fig(self):
+        return self.plotter.make_exploration_figure(
+            self.all_visited_cell_counts_by_step,
+            [len(self.all_walkable_cords)] * (self.training_step),
+            list(range(self.training_step)),
+            f"Explorationsverlauf\n der {self.env._full_name}",
+        )

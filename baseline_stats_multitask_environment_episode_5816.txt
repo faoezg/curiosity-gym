@@ -1,5 +1,0 @@
-############# STATS ################ 
-Lower Bound of visited Statespace: 1.0 
-Avg. ext. Reward over all Trainingsteps: 0.05246847266167866 
-Avg. ext. Reward over last 10 Episodes: 0.0 
-Avg. ext. Reward over last 10 Episodes before Task switch: 5.584583351064081 
