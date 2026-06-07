@@ -33,6 +33,25 @@ class Plotter():
             axe.set_title(title)
 
             return fig
+        
+    def make_reward_figure_with_vertical(self, reward, step, title, reward_prefix, vertical_x_pos, vertical_label, with_marker = False):
+
+        with sns.axes_style("whitegrid", self.rc):
+            fig, axe = plt.subplots()
+            if (with_marker):
+                axe.plot(step, reward, marker="o", color="tab:blue", label=f"{reward_prefix} Reward")
+            else:
+                axe.plot(step, reward, color="tab:blue", label=f"{reward_prefix} Reward")
+            axe.axvline(vertical_x_pos, label=vertical_label, color="gray", linestyle="--")
+            axe.set_xlabel("Schritt")
+            axe.set_ylabel(f"{reward_prefix} Reward")
+            axe.set_title(title)
+
+            self._add_legend(axe)
+
+            return fig
+
+
 
     def make_exploration_figure(self, cells, total_cells, step, title):
 

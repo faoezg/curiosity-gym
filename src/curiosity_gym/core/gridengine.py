@@ -57,12 +57,14 @@ class GridEngine(gym.Env, ABC):
     def __init__(
         self,
         env_name: str,
+        env_full_name: str,
         env_settings: EnvironmentSettings,
         render_settings: RenderSettings,
         env_objects: EnvironmentObjects,
         agent_pov: AgentPOV | str,
     ) -> None:
         self._name = env_name
+        self._full_name = env_full_name
         # Store settings
         self.env_settings = env_settings
         self.render_settings = render_settings

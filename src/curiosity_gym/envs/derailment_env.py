@@ -70,6 +70,7 @@ class DerailmentEnv(GridEngine):
 
         super().__init__(
             env_name = "derailment_environment",
+            env_full_name="Derailment-Umgebung",
             env_settings=env_settings,
             render_settings=render_settings,
             env_objects=env_objects,

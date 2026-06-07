@@ -348,7 +348,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
             self.all_visited_cell_counts_by_step,
             [len(self.all_walkable_cords)] * (self.total_training_step),
             list(range(self.total_training_step)),
-            "Explorationsverlauf"
+            f"Explorationsverlauf\n der {self.env._full_name}",
         )
 
     def _make_reward_figs(self):
@@ -356,18 +356,38 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         if (self.total_extrinsic_reward > 0.0):
             with_marker = True
 
-        ext_fig = self.plotter.make_reward_figure(
-                    self.all_extrinsisc_rewards,
+        if (not isinstance(self.env, MultitaskEnv)):
+            ext_fig = self.plotter.make_reward_figure(
+                        self.all_extrinsisc_rewards,
+                        list(range(self.total_training_step)),
+                        f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                        "ext.",
+                        with_marker
+                    )
+            int_fig = self.plotter.make_reward_figure(
+                    self.all_intrinsisc_rewards,
                     list(range(self.total_training_step)),
-                    "Extrinsische Belohnung über alle Trainingsschritte",
-                    "ext.",
-                    with_marker
+                    f"Intrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                    "int."
                 )
-        int_fig = self.plotter.make_reward_figure(
-                self.all_intrinsisc_rewards,
-                list(range(self.total_training_step)),
-                "Intrinsische Belohnung über alle Trainingsschritte",
-                "int."
-            )
+        else:
+            ext_fig = self.plotter.make_reward_figure_with_vertical(
+                        self.all_extrinsisc_rewards,
+                        list(range(self.total_training_step)),
+                        f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                        "ext.",
+                        280_000,
+                        "Multitask Aufgabenwechsel",
+                        with_marker,
+                )
+
+            int_fig = self.plotter.make_reward_figure_with_vertical(
+                    self.all_intrinsisc_rewards,
+                    list(range(self.total_training_step)),
+                    f"Intrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                    "int.",
+                    280_000,
+                    "Multitask Aufgabenwechsel",
+                )
         
         return ext_fig, int_fig
