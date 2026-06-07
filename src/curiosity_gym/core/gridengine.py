@@ -409,6 +409,7 @@ class GridEngine(gym.Env, ABC):
         rgb_array = self._render_frame(False)
         _, axes = plt.subplots(figsize=(self.env_settings.width, self.env_settings.height))
         sns.heatmap(data, cbar=True, cmap="Greens", alpha=0.7, zorder=1, ax=axes, cbar_kws={"label": "Prozentverteilung intrinsischer Belohnung"})
+        axes.set_title(f"Intrinsische Heatmap\n der {self._full_name}")
         axes.imshow(rgb_array, zorder=0, extent=[0, data.shape[1], data.shape[0],0]) # type: ignore
         
         return axes.get_figure()
@@ -425,6 +426,7 @@ class GridEngine(gym.Env, ABC):
 
         plt.figure(figsize=(self.env_settings.width, self.env_settings.height))
         axes = sns.heatmap(data, cbar=True, cmap="Greens", cbar_kws={"label": "Prozentverteilung intrinsischer Belohnung"})
+        axes.set_title(f"Intrinsische Heatmap\n der {self._full_name}")
         return axes.get_figure()
     
     def heatmap(self) -> Figure | None:
@@ -443,6 +445,7 @@ class GridEngine(gym.Env, ABC):
 
         plt.figure(figsize=(self.env_settings.width, self.env_settings.height))
         axes = sns.heatmap(data, cbar=True, cmap="Blues", cbar_kws={"label": "Log-Anzahl Besichtigungen"})
+        axes.set_title(f"Zustandsheatmap\n der {self._full_name}")
         return axes.get_figure()
 
     def overlay_heatmap(self) -> Figure | None:
@@ -461,6 +464,7 @@ class GridEngine(gym.Env, ABC):
         rgb_array = self._render_frame(False)
         _, axes = plt.subplots(figsize=(self.env_settings.width, self.env_settings.height))
         sns.heatmap(data, cbar=True, cmap="Blues", alpha=0.7, zorder=1, ax=axes, cbar_kws={"label": "Log-Anzahl Besichtigungen"})
+        axes.set_title(f"Zustandsheatmap\n der {self._full_name}")
         axes.imshow(rgb_array, zorder=0, extent=[0, data.shape[1], data.shape[0],0]) # type: ignore
         
         return axes.get_figure()
