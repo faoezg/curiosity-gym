@@ -7,7 +7,7 @@ from curiosity_gym.core.gridengine import GridEngine
 from curiosity_gym.envs.multitaskenv import MultitaskEnv
 import matplotlib.pyplot as plt
 
-from experiments.components.plotter import Plotter
+from experiments.components.serialiser import Serialiser
 
 class LoggingWrapper(gym.Wrapper):
     def __init__(self, env: GridEngine, training_steps: int, training_episodes: int):
@@ -25,7 +25,7 @@ class LoggingWrapper(gym.Wrapper):
         self.last_n_extrinsic_rewards_before_task_switch = None
         self.all_visited_cell_counts_by_step = []
         self.all_extrinsisc_rewards = []
-        self.plotter = Plotter()
+        self.serialiser = Serialiser()
 
         self.all_walkable_cords = self.env.get_every_wakable_cor()
 
@@ -73,9 +73,12 @@ class LoggingWrapper(gym.Wrapper):
         self._save_environment_heatmaps()
         self._calc_stats()
         exp_fig = self._make_exploration_fig()
-        ext_fig = self._make_reward_fig()
-        self.plotter.print_figure(exp_fig, f"experiment_{self.env.name}_exploration")
-        self.plotter.print_figure(ext_fig, f"experiment_{self.env.name}_ext_reward")
+        ext_fig, ext_fig_scatter = self._make_reward_fig()
+        self.serialiser.print_figure(exp_fig, f"experiment_{self.env.name}_exploration", png=False)
+        self.serialiser.print_figure(ext_fig, f"experiment_{self.env.name}_ext_reward")
+        self.serialiser.print_figure(ext_fig, f"experiment_{self.env.name}_ext_reward", png=False)
+        self.serialiser.print_figure(ext_fig_scatter, f"experiment_{self.env.name}_ext_reward_scatter")
+        self.serialiser.print_figure(ext_fig_scatter, f"experiment_{self.env.name}_ext_reward_scatter", png=False)
 
         return super().close()
 
@@ -116,7 +119,7 @@ class LoggingWrapper(gym.Wrapper):
                 f.write(f"Avg. ext. Reward over last 10 Episodes before Task switch: {avg_extrinsic_reward_last_10_episodes_before_switch} \n")
 
     def _make_exploration_fig(self):
-        return self.plotter.make_exploration_figure(
+        return self.serialiser.make_exploration_figure(
             self.all_visited_cell_counts_by_step,
             [len(self.all_walkable_cords)] * (self.training_step),
             list(range(self.training_step)),
@@ -125,20 +128,37 @@ class LoggingWrapper(gym.Wrapper):
 
     def _make_reward_fig(self):
         if (not isinstance(self.env, MultitaskEnv)):
-            ext_fig = self.plotter.make_reward_figure(
+            ext_fig_plot = self.serialiser.make_reward_figure(
+                        self.all_extrinsisc_rewards,
+                        list(range(self.training_step)),
+                        f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                        "ext.",
+                    )
+            ext_fig_scatter = self.serialiser.make_reward_figure_scatter(
                         self.all_extrinsisc_rewards,
                         list(range(self.training_step)),
                         f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
                         "ext.",
                     )
         else:
-            ext_fig = self.plotter.make_reward_figure_with_vertical(
+            ext_fig_plot = self.serialiser.make_reward_figure_with_vertical(
                         self.all_extrinsisc_rewards,
                         list(range(self.training_step)),
                         f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
                         "ext.",
                         280_000,
                         "Multitask Aufgabenwechsel",
+                        with_markers=True
+                )
+            ext_fig_scatter = self.serialiser.make_reward_figure_with_vertical_scatter(
+                        self.all_extrinsisc_rewards,
+                        list(range(self.training_step)),
+                        f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                        "ext.",
+                        280_000,
+                        "Multitask Aufgabenwechsel",
+                        with_markers=True
                 )
         
-        return ext_fig
+        
+        return ext_fig_plot, ext_fig_scatter

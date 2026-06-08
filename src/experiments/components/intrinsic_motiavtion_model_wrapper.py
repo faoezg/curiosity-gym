@@ -17,7 +17,7 @@ from curiosity_gym.core.objects import Key
 from .intrinsic_motiavtion_model import IntrinsicMotivationModel
 from experiments.byol_explore.byol_model import ByolExploreModel
 from experiments.components import ReplayBuffer, Transition
-from experiments.components.plotter import Plotter
+from experiments.components.serialiser import Serialiser
 
 class IntrinsicMotivationModelWrapper(gym.Wrapper):
     def __init__(self,
@@ -57,7 +57,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self.last_n_intrinsic_rewards = deque(maxlen=10)
         self.last_n_extrinsic_rewards_before_task_switch = None
         self.writer = SummaryWriter()
-        self.plotter = Plotter()
+        self.serialiser = Serialiser()
         self.all_extrinsisc_rewards = []
         self.all_intrinsisc_rewards = []
         self.all_visited_cell_counts_by_step = []
@@ -112,10 +112,18 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         self._save_environment_heatmaps()
         self._calc_stats()
         exploration_fig = self._make_exploration_fig()
-        ext_fig, int_fig = self._make_reward_figs()
-        self.plotter.print_figure(exploration_fig, f"{self.intrinsic_model.name}_{self.env.name}_exploration")
-        self.plotter.print_figure(ext_fig, f"{self.intrinsic_model.name}_{self.env.name}_ext_reward")
-        self.plotter.print_figure(int_fig, f"{self.intrinsic_model.name}_{self.env.name}_int_reward")
+        ext_fig, ext_fig_scatter, int_fig, int_fig_scatter = self._make_reward_figs()
+        self.serialiser.print_figure(exploration_fig, f"{self.intrinsic_model.name}_{self.env.name}_exploration", png=False)
+        self.serialiser.print_figure(ext_fig, f"{self.intrinsic_model.name}_{self.env.name}_ext_reward")
+        self.serialiser.print_figure(ext_fig, f"{self.intrinsic_model.name}_{self.env.name}_ext_reward", png=False)
+        self.serialiser.print_figure(int_fig, f"{self.intrinsic_model.name}_{self.env.name}_int_reward")
+        self.serialiser.print_figure(int_fig, f"{self.intrinsic_model.name}_{self.env.name}_int_reward", png=False)
+        self.serialiser.print_figure(ext_fig_scatter, f"{self.intrinsic_model.name}_{self.env.name}_ext_reward_scatter")
+        self.serialiser.print_figure(ext_fig_scatter, f"{self.intrinsic_model.name}_{self.env.name}_ext_reward_scatter", png=False)
+        self.serialiser.print_figure(int_fig_scatter, f"{self.intrinsic_model.name}_{self.env.name}_int_reward_scatter")
+        self.serialiser.print_figure(int_fig_scatter, f"{self.intrinsic_model.name}_{self.env.name}_int_reward_scatter", png=False)
+
+
 
         self.writer.close()
 
@@ -344,7 +352,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                                 }, self.total_training_step)
 
     def _make_exploration_fig(self):
-        return self.plotter.make_exploration_figure(
+        return self.serialiser.make_exploration_figure(
             self.all_visited_cell_counts_by_step,
             [len(self.all_walkable_cords)] * (self.total_training_step),
             list(range(self.total_training_step)),
@@ -354,29 +362,63 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
     def _make_reward_figs(self):
 
         if (not isinstance(self.env, MultitaskEnv)):
-            ext_fig = self.plotter.make_reward_figure(
+            ext_fig = self.serialiser.make_reward_figure(
                         self.all_extrinsisc_rewards,
                         list(range(self.total_training_step)),
                         f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
                         "ext.",
+                        with_markers=True
                     )
-            int_fig = self.plotter.make_reward_figure(
+            int_fig = self.serialiser.make_reward_figure(
                     self.all_intrinsisc_rewards,
                     list(range(self.total_training_step)),
                     f"Intrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
                     "int."
                 )
+            ext_fig_scatter = self.serialiser.make_reward_figure_scatter(
+                        self.all_extrinsisc_rewards,
+                        list(range(self.total_training_step)),
+                        f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                        "ext.",
+                        with_markers=True
+                    )
+            int_fig_scatter = self.serialiser.make_reward_figure_scatter(
+                    self.all_intrinsisc_rewards,
+                    list(range(self.total_training_step)),
+                    f"Intrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                    "int."
+                )
+ 
         else:
-            ext_fig = self.plotter.make_reward_figure_with_vertical(
+            ext_fig = self.serialiser.make_reward_figure_with_vertical(
                         self.all_extrinsisc_rewards,
                         list(range(self.total_training_step)),
                         f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
                         "ext.",
                         280_000,
                         "Multitask Aufgabenwechsel",
+                        with_markers=True
                 )
 
-            int_fig = self.plotter.make_reward_figure_with_vertical(
+            int_fig = self.serialiser.make_reward_figure_with_vertical(
+                    self.all_intrinsisc_rewards,
+                    list(range(self.total_training_step)),
+                    f"Intrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                    "int.",
+                    280_000,
+                    "Multitask Aufgabenwechsel",
+                )
+            ext_fig_scatter = self.serialiser.make_reward_figure_with_vertical_scatter(
+                        self.all_extrinsisc_rewards,
+                        list(range(self.total_training_step)),
+                        f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                        "ext.",
+                        280_000,
+                        "Multitask Aufgabenwechsel",
+                        with_markers=True
+                )
+
+            int_fig_scatter = self.serialiser.make_reward_figure_with_vertical_scatter(
                     self.all_intrinsisc_rewards,
                     list(range(self.total_training_step)),
                     f"Intrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
@@ -385,4 +427,5 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                     "Multitask Aufgabenwechsel",
                 )
         
-        return ext_fig, int_fig
+        
+        return ext_fig, ext_fig_scatter, int_fig, int_fig_scatter
