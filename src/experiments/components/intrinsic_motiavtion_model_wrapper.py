@@ -352,9 +352,6 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         )
 
     def _make_reward_figs(self):
-        with_marker = False
-        if (self.total_extrinsic_reward > 0.0):
-            with_marker = True
 
         if (not isinstance(self.env, MultitaskEnv)):
             ext_fig = self.plotter.make_reward_figure(
@@ -362,7 +359,6 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                         list(range(self.total_training_step)),
                         f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
                         "ext.",
-                        with_marker
                     )
             int_fig = self.plotter.make_reward_figure(
                     self.all_intrinsisc_rewards,
@@ -378,7 +374,6 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                         "ext.",
                         280_000,
                         "Multitask Aufgabenwechsel",
-                        with_marker,
                 )
 
             int_fig = self.plotter.make_reward_figure_with_vertical(

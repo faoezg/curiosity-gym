@@ -24,6 +24,7 @@ class LoggingWrapper(gym.Wrapper):
         self.last_n_extrinsic_rewards = deque(maxlen=10)
         self.last_n_extrinsic_rewards_before_task_switch = None
         self.all_visited_cell_counts_by_step = []
+        self.all_extrinsisc_rewards = []
         self.plotter = Plotter()
 
         self.all_walkable_cords = self.env.get_every_wakable_cor()
@@ -39,6 +40,8 @@ class LoggingWrapper(gym.Wrapper):
         if (isinstance(self.env, GridEngine)):
             self.state_space_visited[self.env.objects.agent.position.tobytes()] = 1
             self.all_visited_cell_counts_by_step.append(len(self.state_space_visited))
+
+        self.all_extrinsisc_rewards.append(extrinsic_reward)
 
         return state, extrinsic_reward, terminated, truncated, info
 
@@ -69,7 +72,10 @@ class LoggingWrapper(gym.Wrapper):
         print("DONE TRAINING")
         self._save_environment_heatmaps()
         self._calc_stats()
-        self._make_exploration_fig()
+        exp_fig = self._make_exploration_fig()
+        ext_fig = self._make_reward_fig()
+        self.plotter.print_figure(exp_fig, f"experiment_{self.env.name}_exploration")
+        self.plotter.print_figure(ext_fig, f"experiment_{self.env.name}_ext_reward")
 
         return super().close()
 
@@ -116,3 +122,23 @@ class LoggingWrapper(gym.Wrapper):
             list(range(self.training_step)),
             f"Explorationsverlauf\n der {self.env._full_name}",
         )
+
+    def _make_reward_fig(self):
+        if (not isinstance(self.env, MultitaskEnv)):
+            ext_fig = self.plotter.make_reward_figure(
+                        self.all_extrinsisc_rewards,
+                        list(range(self.training_step)),
+                        f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                        "ext.",
+                    )
+        else:
+            ext_fig = self.plotter.make_reward_figure_with_vertical(
+                        self.all_extrinsisc_rewards,
+                        list(range(self.training_step)),
+                        f"Extrinsische Belohnung über alle Trainingsschritte\n der {self.env._full_name}",
+                        "ext.",
+                        280_000,
+                        "Multitask Aufgabenwechsel",
+                )
+        
+        return ext_fig

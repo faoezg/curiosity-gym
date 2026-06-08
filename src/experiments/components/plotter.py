@@ -4,6 +4,7 @@ from matplotlib.axes import Axes
 import seaborn as sns
 
 import pathlib
+import numpy as np
 
 class Plotter():
     def __init__(self) -> None:
@@ -20,28 +21,28 @@ class Plotter():
         self.out_dir = pathlib.Path("figures")
         self.out_dir.mkdir(parents=True, exist_ok=True)
 
-    def make_reward_figure(self, reward, step, title, reward_prefix, with_marker = False):
+    def make_reward_figure(self, reward, step, title, reward_prefix):
 
         with sns.axes_style("whitegrid", self.rc):
             fig, axe = plt.subplots()
-            if (with_marker):
-                axe.plot(step, reward, marker="o", color="tab:blue")
-            else:
-                axe.plot(step, reward, color="tab:blue")
+            reward = np.array(reward)
+            reward_mask = np.ma.masked_where(reward == 0, reward)
+            axe.plot(step, reward, color="tab:blue")
+            axe.plot(step, reward_mask, marker="o", color="tab:blue", label=f"{reward_prefix} Reward")
             axe.set_xlabel("Schritt")
             axe.set_ylabel(f"{reward_prefix} Reward")
             axe.set_title(title)
 
             return fig
         
-    def make_reward_figure_with_vertical(self, reward, step, title, reward_prefix, vertical_x_pos, vertical_label, with_marker = False):
+    def make_reward_figure_with_vertical(self, reward, step, title, reward_prefix, vertical_x_pos, vertical_label):
 
         with sns.axes_style("whitegrid", self.rc):
             fig, axe = plt.subplots()
-            if (with_marker):
-                axe.plot(step, reward, marker="o", color="tab:blue", label=f"{reward_prefix} Reward")
-            else:
-                axe.plot(step, reward, color="tab:blue", label=f"{reward_prefix} Reward")
+            reward = np.array(reward)
+            reward_mask = np.ma.masked_where(reward == 0, reward)
+            axe.plot(step, reward, color="tab:blue")
+            axe.plot(step, reward_mask, marker="o", color="tab:blue", label=f"{reward_prefix} Reward")
             axe.axvline(vertical_x_pos, label=vertical_label, color="gray", linestyle="--")
             axe.set_xlabel("Schritt")
             axe.set_ylabel(f"{reward_prefix} Reward")
