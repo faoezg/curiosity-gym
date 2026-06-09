@@ -34,7 +34,8 @@ class ICMNetwork(nn.Module):
                  eta: float,
                  stride: int,
                  use_1d_cnn_encoder: bool,
-                 use_cnn_encoder: bool):
+                 use_cnn_encoder: bool,
+                 use_id_encoder: bool):
                  super().__init__()
                  self.device = device
                  self.action_dim = action_dim
@@ -48,7 +49,8 @@ class ICMNetwork(nn.Module):
                        hidden_dim_encoder=hidden_dim_encoder,
                        stride=stride,
                        use_1d_cnn_encoder=use_1d_cnn_encoder,
-                       use_cnn_encoder=use_cnn_encoder
+                       use_cnn_encoder=use_cnn_encoder,
+                       use_id_encoder=use_id_encoder
                  )
                  self.forward_model = self._create_forward_model(latent_rep_dim, action_dim, hidden_dim_forward)
                  self.invers_model  = self._create_invers_model(latent_rep_dim, action_dim, hidden_dim_inverse)
@@ -78,6 +80,12 @@ class ICMNetwork(nn.Module):
           phi, phi_next = self.encoder.encode_states(state, next_state)
           #phi = state
           #phi_next = next_state
+          if (len(phi.shape) == 1):
+            phi = phi.unsqueeze(0)
+            phi_next = phi_next.unsqueeze(0)
+          
+          phi = phi * 10
+          phi_next = phi_next * 10 
           forward_pred = self._pass_through_forward_model(phi, action)
           inv_logits = self._pass_through_inverse_model(phi, phi_next)
           return phi, phi_next, forward_pred, inv_logits
@@ -92,11 +100,14 @@ class ICMNetwork(nn.Module):
         inv_logits = self.invers_model(inv_input)
         return inv_logits
 
-
     def _create_forward_model(self, latent_rep_dim, action_dim, hidden_dim) -> nn.Sequential:
         """(phi(s), a) -> phi_hat(s')"""
         return nn.Sequential(
             nn.Linear(latent_rep_dim + action_dim, hidden_dim),
+            nn.ELU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ELU(),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ELU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ELU(),
@@ -107,6 +118,8 @@ class ICMNetwork(nn.Module):
         """(phi(s), phi(s')) -> action_hat"""
         return nn.Sequential(
             nn.Linear(2 * latent_rep_dim, hidden_dim),
+            nn.ELU(),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ELU(),
             nn.Linear(hidden_dim, action_dim),
         )

@@ -80,15 +80,6 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         else:
             obs, info = self.env.reset_to_specific_global_state(self.last_best_global_state, **kwargs)
 
-        #if (isinstance(self.env, GridEngine)):
-        #    is_trainig_done = self.episode_count >= self.max_episodes or self.total_training_step >= self.max_training_steps
-        #    if (is_trainig_done and (self.absolute_episode_count % 200 == 0 or self.total_training_step == self.max_training_steps)):
-        #        # TODO THINK ABOUT BYOL
-        #        if (not isinstance(self.intrinsic_model, ByolExploreModel)):
-        #            self.print_intrinsic_heatmap()
-        #        self._save_environment_heatmaps()
-        #        self._calc_stats()
-
         self.total_episode_extrinsic_reward = 0
         self.total_episode_intrinsic_reward = 0
         self.training_step = 0

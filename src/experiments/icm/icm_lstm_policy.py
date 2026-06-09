@@ -19,10 +19,11 @@ class IcmLSTMPolicy(nn.Module):
             state_dim,
             action_dim,
             latent_dim,
-            hidden_dim_encoder = 1024,
-            stride = 1,
-            use_1d_cnn_encoder = False,
-            use_cnn_encoder = False
+            hidden_dim_encoder,
+            stride,
+            use_1d_cnn_encoder = True,
+            use_cnn_encoder = False,
+            use_id_encoder = False
                  ) -> None:
         super().__init__()
         self.latent_dim = latent_dim
@@ -36,7 +37,8 @@ class IcmLSTMPolicy(nn.Module):
             hidden_dim_encoder=hidden_dim_encoder,
             stride=stride,
             use_1d_cnn_encoder=use_1d_cnn_encoder,
-            use_cnn_encoder=use_cnn_encoder
+            use_cnn_encoder=use_cnn_encoder,
+            use_id_encoder=False,
         )
 
         self.lstm = nn.LSTMCell(latent_dim, latent_dim).to(self.device)
@@ -55,7 +57,12 @@ class IcmLSTMPolicy(nn.Module):
         else:
             hidden, c = lstm_state
         
+        if (len(state.shape) == 3):
+            state = state.squeeze(0)
+        
         phi = self.encoder.encode_state(state)
+        if (len(phi.shape)==1):
+            phi = phi.unsqueeze(0)
 
         hidden_next, c_next = self.lstm(phi, (hidden,c))
 

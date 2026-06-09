@@ -11,7 +11,8 @@ class ICMEncoder():
             hidden_dim_encoder: int,
             stride: int,
             use_1d_cnn_encoder: bool,
-            use_cnn_encoder: bool
+            use_cnn_encoder: bool,
+            use_id_encoder: bool,
         ) -> None:
 
         self.use_1d_cnn_encoder = use_1d_cnn_encoder
@@ -22,6 +23,8 @@ class ICMEncoder():
         elif (self.use_cnn_encoder):
             self.encoder_model = self._create_cnn_encoder_model(1, stride, state_dim, latent_rep_dim).to(device)
             self.encoder_fc = nn.Linear(256 * 7 * 10,  256).to(device) # linear transfrom into latent dims
+        elif (use_id_encoder):
+            self.encoder_model = self._create_id_encoder_model(state_dim, hidden_dim_encoder, latent_rep_dim).to(device)
         else:
             self.encoder_model = self._create_encoder_model(state_dim, hidden_dim_encoder, latent_rep_dim).to(device)
 
@@ -67,16 +70,30 @@ class ICMEncoder():
             nn.ELU(),
             nn.Linear(hidden_dim // 4, latent_rep_dim),
         )
+
+    def _create_id_encoder_model(self, state_dim, hidden_dim, latent_rep_dim) -> nn.Sequential:
+        return nn.Sequential(
+            nn.Linear(state_dim, state_dim),
+            nn.ELU(),
+            nn.Linear(state_dim, state_dim),
+            nn.ELU(),
+            nn.Linear(state_dim, latent_rep_dim),
+        )
+    
     
     def _create_1d_cnn_encoder_model(self, state_channel_dim, stride, state_dim, latent_rep_dim) -> nn.Sequential:
          return nn.Sequential(
-              nn.Conv1d(in_channels=1, out_channels=1, kernel_size=stride, stride=stride),
-              #nn.ReLU(),
-              #nn.Conv1d(in_channels=state_channel_dim, out_channels=state_channel_dim, kernel_size=1, groups=3),
+              nn.Conv1d(in_channels=1, out_channels=25, kernel_size=stride, stride=stride),
               nn.ELU(),
-              nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1), # MLP/NIN
-              nn.Linear(24, latent_rep_dim // 2), # linear transfrom into latent dims
-              nn.Linear(latent_rep_dim // 2, latent_rep_dim) # linear transfrom into latent dims
+              nn.Conv1d(in_channels=25, out_channels=25, kernel_size=1), # MLP/NIN
+              nn.ELU(),
+              nn.Conv1d(in_channels=25, out_channels=25, kernel_size=1), # MLP/NIN
+              nn.ELU(),
+              nn.Conv1d(in_channels=25, out_channels=13, kernel_size=1), # MLP/NIN
+              nn.ELU(),
+              nn.Conv1d(in_channels=13, out_channels=1, kernel_size=1), # MLP/NIN
+              nn.ELU(),
+              nn.Linear(25, latent_rep_dim), # linear transfrom into latent dims
          )
 
     def _create_cnn_encoder_model(self, state_channel_dim, stride, state_dim, latent_rep_dim) -> nn.Sequential:

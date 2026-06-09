@@ -20,7 +20,7 @@ import gc
 from functools import partial
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-NUM_ENVS = 1                     # number of asynchronous workers (SB3 default)
+NUM_ENVS = 5                     # number of asynchronous workers (SB3 default)
 SEED = 42
 TOTAL_TIMESTEPS = 500_000 * NUM_ENVS
 
@@ -40,36 +40,38 @@ def _build_shared_icm():
         agentPOV="local_2",
         simple_obs=True,
         simple_actions=False,
-        use_globaly_unique_id=False,
+        use_globaly_unique_id=True,
         use_colours=True,
         use_rgb_state=False
     )  # type: ignore
 
     state_dim=tmp_raw.observation_space.shape[0]
     action_dim=tmp_raw.action_space.n
-    latent_rep_dim=256
+    stride=tmp_raw.unwrapped.label_count_per_cell
+    latent_rep_dim=25
 
     icm = ICMModel(
         device=DEVICE,
         state_dim=state_dim,
         action_dim=action_dim,
         latent_rep_dim=latent_rep_dim,
-        hidden_dim_forward=256,
-        hidden_dim_inverse=256,
-        hidden_dim_encoder=1024,
+        hidden_dim_forward=29,
+        hidden_dim_inverse=50,
+        hidden_dim_encoder=25,
         beta=0.2,
-        eta=0.1,
-        stride=tmp_raw.unwrapped.label_count_per_cell,
+        eta=100,
+        stride=stride,
         icm_lr=1e-6,
         share_memory=True,
-        use_cnn_encoder=False
+        use_cnn_encoder=False,
+        use_1d_cnn_encoder=True
     )
 
     # Put every parameter tensor into shared memory so that all workers
     # see the *same* ICM weights.
 
     tmp_raw.close()
-    return icm, state_dim, action_dim, latent_rep_dim
+    return icm, state_dim, action_dim, latent_rep_dim, stride
 
 
 def make_env(rank: int, shared_icm: ICMModel) -> gym.Env:
@@ -90,12 +92,12 @@ def make_env(rank: int, shared_icm: ICMModel) -> gym.Env:
         max_training_steps=500_000,
         use_simple_obs=True,
         use_simple_actions=False,
-        use_globaly_unique_id=False,
+        use_globaly_unique_id=True,
         use_colours=True,
         use_rgb_state=False,
         is_atari=False,
         shared_icm=shared_icm,          # <-- reuse the SAME ICM instance
-        rank=rank
+        rank=rank,
     )
     # Give each worker its own seed (helps decorrelation)
 
@@ -111,7 +113,7 @@ if __name__ == "__main__":
     # --------------------------------------------------------------
     # (a)  Make the ICM model *once* and share its memory
     # --------------------------------------------------------------
-    shared_icm, state_dim, action_dim, latent_rep_dim = _build_shared_icm()
+    shared_icm, state_dim, action_dim, latent_rep_dim, stride = _build_shared_icm()
 
     # --------------------------------------------------------------
     # (b)  Build a list of environment factories for SubprocVecEnv
@@ -128,7 +130,10 @@ if __name__ == "__main__":
         state_dim=state_dim,
         action_dim=action_dim,
         latent_dim=latent_rep_dim,
-        use_cnn_encoder=False
+        hidden_dim_encoder=25,
+        stride=stride,
+        use_cnn_encoder=False,
+        use_1d_cnn_encoder=True
     )
 
     policy.share_memory()

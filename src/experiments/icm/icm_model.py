@@ -36,6 +36,7 @@ class ICMModel(IntrinsicMotivationModel):
                  icm_lr: float = 1e-3,
                  use_1d_cnn_encoder: bool = False,
                  use_cnn_encoder: bool = False,
+                 use_id_encoder: bool = False,
                  share_memory: bool = False
                  ):
         super().__init__("icm")
@@ -51,7 +52,8 @@ class ICMModel(IntrinsicMotivationModel):
                                       eta,
                                       stride,
                                       use_1d_cnn_encoder,
-                                      use_cnn_encoder).to(device)
+                                      use_cnn_encoder,
+                                      use_id_encoder=use_id_encoder).to(device)
 
         self.use_cnn_encoder = use_cnn_encoder
         if (share_memory):
@@ -66,7 +68,7 @@ class ICMModel(IntrinsicMotivationModel):
         else:
             self.optimizer = torch.optim.Adam([
                 {"params": self.icm_network.encoder.encoder_model.parameters(), "lr": 1e-3},
-                {"params": self.icm_network.forward_model.parameters(), "lr": 1e-3},
+                {"params": self.icm_network.forward_model.parameters(), "lr": 10e-3},
                 {"params": self.icm_network.invers_model.parameters(), "lr": 1e-3},
             ])
             #self.optimizer = torch.optim.Adam(self.icm_network.parameters())
@@ -98,7 +100,7 @@ class ICMModel(IntrinsicMotivationModel):
         return intrinsic_reward
     
     def calc_forward_loss(self, forward_pred: torch.Tensor, next_state: torch.Tensor) -> torch.Tensor:
-        return 0.5 * F.mse_loss(forward_pred, next_state, reduction="mean")
+        return 0.5 * F.mse_loss(forward_pred, next_state, reduction="mean") * self.latent_rep_dim
     
     def calc_icm_loss(self, state: torch.Tensor, next_state: torch.Tensor, action: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         if (self.use_cnn_encoder):
@@ -133,7 +135,11 @@ class ICMModel(IntrinsicMotivationModel):
         loss = (1 - icm_beta) * inv_loss + icm_beta * forward_loss
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.icm_network.parameters(), max_norm=40)
+        #fwd_grad_norm = sum(p.grad.norm().item() for p in self.icm_network.forward_model.parameters())
+        #inv_grad_norm = sum(p.grad.norm().item() for p in self.icm_network.invers_model.parameters())
+        #enc_grad_norm = sum(p.grad.norm().item() for p in self.icm_network.encoder.encoder_model.parameters())
+        #print(f"fwd grad norm = {fwd_grad_norm:.4f} inv grad norm = {inv_grad_norm:.4f}, enc grad norm = {enc_grad_norm:.4f}")
+        #torch.nn.utils.clip_grad_norm_(self.icm_network.parameters(), max_norm=40)
         self.optimizer.step()
 
         return inv_loss.item(), forward_loss.item()

@@ -11,10 +11,10 @@ def make_icm_env(
     base_env_id: str = "SparseEnv",
     base_env_pov: str = "local_2",
     device: str = "cpu",
-    latent_rep_dim: int = 256,
-    hidden_dim_forward: int = 64,
-    hidden_dim_inverse: int = 64,
-    hidden_dim_encoder: int = 1024,
+    latent_rep_dim: int = 25,
+    hidden_dim_forward: int = 29,
+    hidden_dim_inverse: int = 50,
+    hidden_dim_encoder: int = 25,
     intrinsic_reset_threshold: float = 0.5,
     allow_global_state_reset: bool = False,
     render_mode: str | None = "rgb_array",
@@ -48,16 +48,17 @@ def make_icm_env(
                 device = device,
                 state_dim=raw_env.observation_space.shape[0], # type: ignore
                 action_dim=raw_env.action_space.n, # type: ignore
-                latent_rep_dim=latent_rep_dim,#raw_env.observation_space.shape[0], # type: ignore
+                latent_rep_dim=latent_rep_dim, # type: ignore
                 hidden_dim_forward=hidden_dim_forward,
                 hidden_dim_inverse=hidden_dim_inverse,
                 hidden_dim_encoder=hidden_dim_encoder,
-                beta=.2,
-                eta=100,
+                beta=0.2,
+                eta=1000,
                 stride=raw_env.unwrapped.label_count_per_cell,
                 icm_lr=1e-6,
-                use_1d_cnn_encoder=False,
-                use_cnn_encoder=False)
+                use_1d_cnn_encoder=True,
+                use_cnn_encoder=False,
+                use_id_encoder=False)
     else:
         icm = shared_icm
         #raw_env.unwrapped.unwrapped.seed(42 + rank * 1000)
@@ -74,6 +75,6 @@ def make_icm_env(
         rank=rank
     )
 
-    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{icm.name}_{raw_env.unwrapped.name}", episode_trigger=lambda x: x % 1000 == 0)
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{icm.name}_{raw_env.unwrapped.name}", episode_trigger=lambda x: x % 30 == 0)
 
     return new_env
