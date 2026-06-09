@@ -105,7 +105,7 @@ class SimpleSparseEnv(GridEngine):
 
         super().__init__(
             env_name = "simple_sparse_environment",
-            env_full_name="Simple-Spärliche-Umgebung",
+            env_full_name="Simplen-Spärlichen-Umgebung",
             env_settings=env_settings,
             render_settings=render_settings,
             env_objects=env_objects,

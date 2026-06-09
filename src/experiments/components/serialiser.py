@@ -107,9 +107,9 @@ class Serialiser():
         axe.legend(lines, labels)
 
     def print_figure(self, figure: Figure, filename: str, png = True):
-        filetype = ".pdf"
+        filetype = "pdf"
         if (png):
-            filetype = ".png"
+            filetype = "png"
         print_path = self.out_dir / f"{filename}.{filetype}"
         figure.savefig(print_path)
         plt.close(figure)
