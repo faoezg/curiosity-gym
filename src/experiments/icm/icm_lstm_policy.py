@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from experiments.icm.icm_encoder import ICMEncoder
+from experiments.components.icm_encoder import ICMEncoder
 
 # AI SUPPORTED CODE - OpenAI GPT OSS 120B
 

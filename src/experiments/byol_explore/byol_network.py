@@ -3,6 +3,8 @@ from torch import nn, device
 import torch.nn.functional as F
 import copy
 
+from experiments.components.icm_encoder import ICMEncoder
+
 # following Z. Guo et. al. 2022
 class ByolExploreNetwork(nn.Module):
     def __init__(self,
@@ -11,6 +13,7 @@ class ByolExploreNetwork(nn.Module):
                  hidden_dim: int,
                  latent_rep_dim: int,
                  time_horizon: int,
+                 stride: int,
                  device: device | str,
                  alpha: float = 0.99,
                  ) -> None:
@@ -21,7 +24,7 @@ class ByolExploreNetwork(nn.Module):
         self.latent_rep_dim = latent_rep_dim
         self.action_dim = action_dim
 
-        self.encoder_model = self._create_encoder_model(state_dim, hidden_dim, latent_rep_dim)
+        self.encoder_model = ICMEncoder(device, state_dim, latent_rep_dim, hidden_dim, stride, True, False, False)
         self._init_recurrent_model(action_dim, latent_rep_dim, hidden_dim)
         self.predictor_model = self._create_predictor_model(hidden_dim, latent_rep_dim)
         self._init_target_model(alpha)
@@ -29,7 +32,7 @@ class ByolExploreNetwork(nn.Module):
     def forward(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor):
         B, T, C = state_buffer.shape 
 
-        state_encoding = self.encoder_model(state_buffer.view(B * T, C)).view(B, T, self.latent_rep_dim)
+        state_encoding = self.encoder_model.encode_state(state_buffer.view(B * T, C)).view(B, T, self.latent_rep_dim)
         # state_projection = self.projection_model(state_encoding)
 
         h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_encoding)
@@ -72,7 +75,7 @@ class ByolExploreNetwork(nn.Module):
             pred = self.predictor_model(h_open)
 
             with torch.no_grad():
-                target_encoded = self.target_encoder_model(state_buffer[:, k].view(batch_dim * k, channel)).view(batch_dim, self.latent_rep_dim)
+                target_encoded = self.target_encoder_model.encode_state(state_buffer[:, k].view(batch_dim, channel)).view(batch_dim, self.latent_rep_dim)
             
             pred_normalised = F.normalize(pred, dim=-1)
             target_normalised = F.normalize(target_encoded, dim=-1)
@@ -86,26 +89,35 @@ class ByolExploreNetwork(nn.Module):
     
     @torch.no_grad()
     def update_target_model(self):
-        for encoder_parameters, target_parameters in zip(self.encoder_model.parameters(), self.target_encoder_model.parameters()):
-            target_parameters.data.mul_(self.alpha).add(encoder_parameters.data * (1.0 - self.alpha)) # EMA for Byol
+        for encoder_parameters, target_parameters in zip(self.encoder_model.encoder_model.parameters(), self.target_encoder_model.encoder_model.parameters()):
+            target_parameters.data.mul_(1 - self.alpha)
+            target_parameters.data.add_(encoder_parameters.data * self.alpha) # EMA for Byol
  
     # f in the paper, no conv needed as we have a very simply state to begin with
-    def _create_encoder_model(self, state_dim: int, hidden_dim: int, latent_rep_dim: int):
+    def _create_encoder_model(self, state_dim: int, hidden_dim: int, latent_rep_dim: int, stride: int):
         return nn.Sequential(
-            nn.Linear(state_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, latent_rep_dim),
-            nn.ReLU(),
-            #nn.Linear(hidden_dim, latent_rep_dim)
-        ).to(torch.float32).to(self.DEVICE)
+              nn.Conv1d(in_channels=1, out_channels=25, kernel_size=stride, stride=stride),
+              nn.ELU(),
+              nn.Conv1d(in_channels=25, out_channels=25, kernel_size=1), # MLP/NIN
+              nn.ELU(),
+              nn.Conv1d(in_channels=25, out_channels=25, kernel_size=1), # MLP/NIN
+              nn.ELU(),
+              nn.Conv1d(in_channels=25, out_channels=13, kernel_size=1), # MLP/NIN
+              nn.ELU(),
+              nn.Conv1d(in_channels=13, out_channels=1, kernel_size=1), # MLP/NIN
+              nn.ELU(),
+              nn.Linear(25, latent_rep_dim), # linear transfrom into latent dims
+         )
     
     def _init_target_model(self, alpha: float):
         self.target_encoder_model = copy.deepcopy(self.encoder_model)
-        for parameter in self.target_encoder_model.parameters():
+        self.target_network = copy.deepcopy(self.encoder_model.encoder_model)
+        for parameter in self.target_network.parameters():
             parameter.requires_grad = False
 
-        self.target_encoder_model.eval()
+        self.target_network.eval()
         self.alpha = alpha
+        self.target_encoder_model.encoder_model = self.target_network
 
     # h in the paper
     def _init_recurrent_model(self, action_dim: int, latent_rep_dim: int, hidden_dim: int):
@@ -116,7 +128,8 @@ class ByolExploreNetwork(nn.Module):
     def _create_predictor_model(self, hidden_dim: int, latent_rep_dim: int):
         return nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            nn.ELU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ELU(),
             nn.Linear(hidden_dim, latent_rep_dim),
-            nn.ReLU()
         ).to(torch.float32)

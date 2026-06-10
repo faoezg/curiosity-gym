@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch import device
 
-from experiments.icm.icm_encoder import ICMEncoder
+from experiments.components.icm_encoder import ICMEncoder
 
 
 class ICMNetwork(nn.Module):

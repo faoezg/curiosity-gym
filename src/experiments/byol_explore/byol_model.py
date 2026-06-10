@@ -16,16 +16,20 @@ class ByolExploreModel(IntrinsicMotivationModel):
                  latent_rep_dim: int,
                  time_horizon: int,
                  device: device | str,
+                 stride,
                  alpha: float = 0.9999,
                  lambda_byol: float = 5.0, # lambda_byol in the paper
                  reward_norm_decay: float = 0.99
                 ) -> None:
         super().__init__("byolExplore")
-        self.byol_network = ByolExploreNetwork(state_dim, action_dim, hidden_dim, latent_rep_dim, time_horizon, device, alpha).to(device)
+        self.byol_network = ByolExploreNetwork(state_dim, action_dim, hidden_dim, latent_rep_dim, time_horizon, stride, device, alpha).to(device)
         self.reward_normaliser = RewardNormaliser(decay=reward_norm_decay)
 
         self.lambda_byol = lambda_byol
-        self.optimizer = torch.optim.Adam(self.byol_network.parameters(), lr=0.0001)
+        self.optimizer = torch.optim.Adam([
+                {"params": self.byol_network.parameters(), "lr": 1e-3},
+                {"params": self.byol_network.encoder_model.encoder_model.parameters(), "lr": 1e-3},
+            ])
 
     def calc_intrinsic_reward(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor):
         byol_loss, raw_intrinsic_reward = self.byol_network(state_buffer, action_buffer)
@@ -37,5 +41,6 @@ class ByolExploreModel(IntrinsicMotivationModel):
     def _train_network(self, byol_loss: torch.Tensor):
         self.optimizer.zero_grad()
         (byol_loss * self.lambda_byol).backward()
+        torch.nn.utils.clip_grad_norm_(self.byol_network.predictor_model.parameters(), max_norm=0.5)
         self.optimizer.step()
         self.byol_network.update_target_model()

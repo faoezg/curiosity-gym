@@ -13,11 +13,11 @@ def make_byol_env(
     base_env_pov: str = "local_2",
     device: str = "cpu",
     lambda_byol: float = 5.0,
-    reward_norm_decay: float = 0.999,
-    hidden_dim: int = 1024,
-    latent_rep_dim: int = 1024,
-    time_horizon: int = 2,
-    alpha: float = 0.99999,
+    reward_norm_decay: float = 0.95,
+    hidden_dim: int = 256,
+    latent_rep_dim: int = 25,
+    time_horizon: int = 3,
+    alpha: float = 0.9,
     render_mode: str = "rgb_array",
     max_episodes: int = 5000,
     max_training_steps: int = 500,
@@ -45,7 +45,9 @@ def make_byol_env(
                             device=device,
                             alpha=alpha,
                             lambda_byol=lambda_byol,
-                            reward_norm_decay=reward_norm_decay)
+                            reward_norm_decay=reward_norm_decay,
+                            stride=raw_env.unwrapped.label_count_per_cell,
+                            )
 
 
 
@@ -57,6 +59,6 @@ def make_byol_env(
         max_training_steps=max_training_steps
     )
 
-    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{byol_model.name}_{raw_env.unwrapped.name}", episode_trigger=lambda x: x % 1000 == 0)
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{byol_model.name}_{raw_env.unwrapped.name}", episode_trigger=lambda x: x % 30 == 0)
 
     return new_env
