@@ -39,7 +39,10 @@ def make_coin_flip_env(
                         d_dim=d_dim,
                         priority_alpha=priority_alpha,
                         reward_scale=reward_scale,
-                        device=device)
+                        device=device,
+                        update_period=15,
+                        buffer_size=50000,
+                        batch_size=512)
 
     new_env = CoinFlipWrapper(
         env=raw_env,

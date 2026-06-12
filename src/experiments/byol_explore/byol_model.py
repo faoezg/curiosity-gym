@@ -31,11 +31,14 @@ class ByolExploreModel(IntrinsicMotivationModel):
                 {"params": self.byol_network.encoder_model.encoder_model.parameters(), "lr": 1e-3},
             ])
 
-    def calc_intrinsic_reward(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor):
+    def calc_intrinsic_reward(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor, normalize: bool = True):
         byol_loss, raw_intrinsic_reward = self.byol_network(state_buffer, action_buffer)
         raw_intrinsic_reward = raw_intrinsic_reward.squeeze(0)
-        norm_intrinsic_reward = self.reward_normaliser(raw_intrinsic_reward).detach()
-        intrinsic_reward = norm_intrinsic_reward.mean().item()
+        if (normalize):
+            norm_intrinsic_reward = self.reward_normaliser(raw_intrinsic_reward).detach()
+            intrinsic_reward = norm_intrinsic_reward.mean().item()
+        else:
+            intrinsic_reward = raw_intrinsic_reward.sum().item()
         return intrinsic_reward, byol_loss
 
     def _train_network(self, byol_loss: torch.Tensor):

@@ -93,22 +93,6 @@ class ByolExploreNetwork(nn.Module):
             target_parameters.data.mul_(1 - self.alpha)
             target_parameters.data.add_(encoder_parameters.data * self.alpha) # EMA for Byol
  
-    # f in the paper, no conv needed as we have a very simply state to begin with
-    def _create_encoder_model(self, state_dim: int, hidden_dim: int, latent_rep_dim: int, stride: int):
-        return nn.Sequential(
-              nn.Conv1d(in_channels=1, out_channels=25, kernel_size=stride, stride=stride),
-              nn.ELU(),
-              nn.Conv1d(in_channels=25, out_channels=25, kernel_size=1), # MLP/NIN
-              nn.ELU(),
-              nn.Conv1d(in_channels=25, out_channels=25, kernel_size=1), # MLP/NIN
-              nn.ELU(),
-              nn.Conv1d(in_channels=25, out_channels=13, kernel_size=1), # MLP/NIN
-              nn.ELU(),
-              nn.Conv1d(in_channels=13, out_channels=1, kernel_size=1), # MLP/NIN
-              nn.ELU(),
-              nn.Linear(25, latent_rep_dim), # linear transfrom into latent dims
-         )
-    
     def _init_target_model(self, alpha: float):
         self.target_encoder_model = copy.deepcopy(self.encoder_model)
         self.target_network = copy.deepcopy(self.encoder_model.encoder_model)

@@ -16,7 +16,8 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         allow_global_state_reset: bool = False,
         max_training_steps: int = 500,
         max_episodes: int = 1000,
-        batch_dim = 32
+        batch_dim = 32,
+        buffer_size = 50000,
     ):
         super().__init__(env, byol_explore_model,
                          device,
@@ -27,8 +28,15 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         self.intrinsic_model: ByolExploreModel = self.intrinsic_model
         self.batch_dim = batch_dim
 
-        buffer_size = self.intrinsic_model.byol_network.time_horizon * batch_dim
+        self.time_horizon = self.intrinsic_model.byol_network.time_horizon
+
+        buffer_size = self.intrinsic_model.byol_network.time_horizon * buffer_size
         self.buffer = ReplayBuffer(size=buffer_size)
+        self.running_buffer = ReplayBuffer(size=self.time_horizon)
+    
+    def reset(self, **kwargs):
+        self.running_buffer.buffer.clear()
+        return super().reset(**kwargs)
 
     def step(self, action):
         if (isinstance(self.env, GridEngine)):
@@ -38,17 +46,24 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
 
         transition = Transition(self.prev_state, action, extrinsic_reward, state) # type: ignore
         self.buffer.add(transition)
+        self.running_buffer.add(transition)
 
-        if self.buffer.is_fully_populated():
-            state_buffer, action_buffer = self._create_trajectory()
+        if ((len(self.buffer) >= self.batch_dim * self.intrinsic_model.byol_network.time_horizon) and self.training_step % 12 == 0):
+            state_buffer, action_buffer = self._create_trajectorys_for_batch()
             # This is fine as the buffer only every has one trajecotry. Thus o_t+1 is the latest in the buffer
             # Therefore, if the sample the entire buffer the loss should be correctly associated this the current transition
-            intrinsic_reward, byol_loss = self.intrinsic_model.calc_intrinsic_reward(state_buffer, action_buffer)
+            intrinsic_reward, byol_loss = self.intrinsic_model.calc_intrinsic_reward(state_buffer, action_buffer, False)
+            self.intrinsic_model._train_network(byol_loss)
+
+        if (len(self.running_buffer) == self.time_horizon):
+            state_buffer, action_buffer = self._create_trajectory_for_running_buffer()
+            # This is fine as the buffer only every has one trajecotry. Thus o_t+1 is the latest in the buffer
+            # Therefore, if the sample the entire buffer the loss should be correctly associated this the current transition
+            intrinsic_reward, byol_loss = self.intrinsic_model.calc_intrinsic_reward(state_buffer, action_buffer, False)
             if (isinstance(self.env, GridEngine)):
                 self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state)
             reward = extrinsic_reward + intrinsic_reward # type: ignore
 
-            self.intrinsic_model._train_network(byol_loss)
         else:
             reward = extrinsic_reward
             intrinsic_reward = 0.0
@@ -75,13 +90,14 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         self.total_training_step += 1
 
         return state, reward, terminated, truncated, info 
-
-    def _create_trajectory(self):
+    
+    def _create_trajectory_for_running_buffer(self):
+        time_horizon = self.intrinsic_model.byol_network.time_horizon
         state_tensors = []
         actions = []
-        samples = self.buffer.buffer # not sampling as that breaks causality
+        samples = self.running_buffer.sample_continues_slices(1, time_horizon, self.env.env_settings.max_steps) # not sampling as that breaks causality
 
-        for batch in zip(*(iter(samples),) * self.intrinsic_model.byol_network.time_horizon):
+        for batch in samples:
             batch_state_list = []
             batch_action_list = []
             for transition in batch:
@@ -100,9 +116,27 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
 
         return state_buffer, action_buffer
 
-    def _calc_intrinsic_reward_and_loss(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor):
-        byol_loss, raw_intrinsic_reward = self.model(state_buffer, action_buffer) # raw_intr: (B,T)
-        raw_intrinsic_reward = raw_intrinsic_reward.squeeze(0)                    # (T,)
-        norm_intrinsic_reward = self.norm(raw_intrinsic_reward).detach()
-        intrinsic_reward = norm_intrinsic_reward[0].item()
-        return intrinsic_reward, byol_loss
+    def _create_trajectorys_for_batch(self):
+        time_horizon = self.intrinsic_model.byol_network.time_horizon
+        state_tensors = []
+        actions = []
+        samples = self.buffer.sample_continues_slices(self.batch_dim, time_horizon, self.env.env_settings.max_steps) # not sampling as that breaks causality
+
+        for batch in samples:
+            batch_state_list = []
+            batch_action_list = []
+            for transition in batch:
+                state_tensor = torch.from_numpy(transition.next_state)
+                batch_state_list.append(state_tensor)
+                batch_action_list.append(transition.action)
+            state_tensors.append(torch.stack(batch_state_list, dim=0).to(self.device))
+            actions.append(torch.tensor(batch_action_list, dtype=torch.long, device=self.device))
+
+        state_buffer = torch.stack(state_tensors, dim=0) # (B, T=2, N)
+        state_buffer = state_buffer.to(torch.float32).to(self.device)
+
+        action_buffer = torch.stack(
+            actions,
+        ).to(self.device) # (B, T=2)
+
+        return state_buffer, action_buffer

@@ -55,7 +55,7 @@ def make_icm_env(
                 beta=0.2,
                 eta=1000,
                 stride=raw_env.unwrapped.label_count_per_cell,
-                icm_lr=1e-6,
+                icm_lr=1e-3,
                 use_1d_cnn_encoder=True,
                 use_cnn_encoder=False,
                 use_id_encoder=False)
@@ -75,6 +75,6 @@ def make_icm_env(
         rank=rank
     )
 
-    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{icm.name}_{raw_env.unwrapped.name}", episode_trigger=lambda x: x % 30 == 0)
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{icm.name}_{raw_env.unwrapped.name}", episode_trigger=lambda x: x % 1000 == 0)
 
     return new_env
