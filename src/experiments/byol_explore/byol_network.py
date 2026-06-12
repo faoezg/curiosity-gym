@@ -65,7 +65,7 @@ class ByolExploreNetwork(nn.Module):
         for k in range(1, self.time_horizon + 1):
             if k >= end_time:
                 break
-            future_action = nn.functional.one_hot(action_buffer[:, k], self.action_dim).to(torch.float32).to(self.DEVICE)
+            future_action = nn.functional.one_hot(action_buffer[:, k-1], self.action_dim).to(torch.float32).to(self.DEVICE)
             h_open = self.open_gru(future_action, h_open) # (B, hidden_dim)
 
             pred = self.predictor_model(h_open)
@@ -81,13 +81,14 @@ class ByolExploreNetwork(nn.Module):
             intrinsic_rewards[:, k] += timestep_loss
 
         byol_loss = cos_loss / max(count, 1) # average by k, but count is not necessarily non-zero
+        intrinsic_rewards = intrinsic_rewards.cumsum(dim=1)
         return byol_loss, intrinsic_rewards
     
     @torch.no_grad()
     def update_target_model(self):
         for encoder_parameters, target_parameters in zip(self.encoder_model.encoder_model.parameters(), self.target_encoder_model.encoder_model.parameters()):
-            target_parameters.data.mul_(1 - self.alpha)
-            target_parameters.data.add_(encoder_parameters.data * self.alpha) # EMA for Byol
+            target_parameters.data.mul_(self.alpha)
+            target_parameters.data.add_(encoder_parameters.data * (1 - self.alpha)) # EMA for Byol
  
     def _init_target_model(self, alpha: float):
         self.target_encoder_model = copy.deepcopy(self.encoder_model)

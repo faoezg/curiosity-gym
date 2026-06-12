@@ -32,13 +32,10 @@ class ByolExploreModel(IntrinsicMotivationModel):
             ])
 
     def calc_intrinsic_reward(self, state_buffer: torch.Tensor, action_buffer: torch.Tensor, normalize: bool = True):
-        byol_loss, raw_intrinsic_reward = self.byol_network(state_buffer, action_buffer)
-        raw_intrinsic_reward = raw_intrinsic_reward.squeeze(0)
+        byol_loss, intrinsic_reward = self.byol_network(state_buffer, action_buffer)
         if (normalize):
-            norm_intrinsic_reward = self.reward_normaliser(raw_intrinsic_reward).detach()
-            intrinsic_reward = norm_intrinsic_reward.mean().item()
-        else:
-            intrinsic_reward = raw_intrinsic_reward.sum().item()
+            intrinsic_reward = self.reward_normaliser(intrinsic_reward).detach()
+
         return intrinsic_reward, byol_loss
 
     def _train_network(self, byol_loss: torch.Tensor):

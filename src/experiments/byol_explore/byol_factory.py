@@ -16,7 +16,7 @@ def make_byol_env(
     reward_norm_decay: float = 0.95,
     hidden_dim: int = 128,
     latent_rep_dim: int = 64,
-    time_horizon: int = 2,
+    time_horizon: int = 5,
     alpha: float = 0.95,
     render_mode: str = "rgb_array",
     max_episodes: int = 5000,

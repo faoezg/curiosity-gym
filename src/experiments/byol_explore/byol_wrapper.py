@@ -30,9 +30,9 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
 
         self.time_horizon = self.intrinsic_model.byol_network.time_horizon
 
-        buffer_size = self.intrinsic_model.byol_network.time_horizon * buffer_size
+        buffer_size = (self.intrinsic_model.byol_network.time_horizon + 1) * buffer_size
         self.buffer = ReplayBuffer(size=buffer_size)
-        self.running_buffer = ReplayBuffer(size=self.time_horizon)
+        self.running_buffer = ReplayBuffer(size=self.time_horizon + 1)
     
     def reset(self, **kwargs):
         self.running_buffer.buffer.clear()
@@ -48,18 +48,19 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         self.buffer.add(transition)
         self.running_buffer.add(transition)
 
-        if ((len(self.buffer) >= self.batch_dim * self.intrinsic_model.byol_network.time_horizon) and self.training_step % 12 == 0):
+        if ((len(self.buffer) >= self.batch_dim * (self.intrinsic_model.byol_network.time_horizon + 1)) and self.training_step % 12 == 0):
             state_buffer, action_buffer = self._create_trajectorys_for_batch()
             # This is fine as the buffer only every has one trajecotry. Thus o_t+1 is the latest in the buffer
             # Therefore, if the sample the entire buffer the loss should be correctly associated this the current transition
             intrinsic_reward, byol_loss = self.intrinsic_model.calc_intrinsic_reward(state_buffer, action_buffer, False)
             self.intrinsic_model._train_network(byol_loss)
 
-        if (len(self.running_buffer) == self.time_horizon):
+        if (len(self.running_buffer) == (self.time_horizon + 1)):
             state_buffer, action_buffer = self._create_trajectory_for_running_buffer()
             # This is fine as the buffer only every has one trajecotry. Thus o_t+1 is the latest in the buffer
             # Therefore, if the sample the entire buffer the loss should be correctly associated this the current transition
             intrinsic_reward, byol_loss = self.intrinsic_model.calc_intrinsic_reward(state_buffer, action_buffer, False)
+            intrinsic_reward = intrinsic_reward[0, 1].item()
             if (isinstance(self.env, GridEngine)):
                 self._handle_new_intrinsic_reward(intrinsic_reward, raw_global_state)
             reward = extrinsic_reward + intrinsic_reward # type: ignore
@@ -95,15 +96,16 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         time_horizon = self.intrinsic_model.byol_network.time_horizon
         state_tensors = []
         actions = []
-        samples = self.running_buffer.sample_continues_slices(1, time_horizon, self.env.env_settings.max_steps) # not sampling as that breaks causality
+        samples = self.running_buffer.sample_continues_slices(1, time_horizon + 1, self.env.env_settings.max_steps) # not sampling as that breaks causality
 
         for batch in samples:
             batch_state_list = []
             batch_action_list = []
-            for transition in batch:
+            for idx, transition in enumerate(batch):
                 state_tensor = torch.from_numpy(transition.next_state)
                 batch_state_list.append(state_tensor)
-                batch_action_list.append(transition.action)
+                if (idx != self.time_horizon):
+                    batch_action_list.append(transition.action)
             state_tensors.append(torch.stack(batch_state_list, dim=0).to(self.device))
             actions.append(torch.tensor(batch_action_list, dtype=torch.long, device=self.device))
 
@@ -120,7 +122,7 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         time_horizon = self.intrinsic_model.byol_network.time_horizon
         state_tensors = []
         actions = []
-        samples = self.buffer.sample_continues_slices(self.batch_dim, time_horizon, self.env.env_settings.max_steps) # not sampling as that breaks causality
+        samples = self.buffer.sample_continues_slices(self.batch_dim, time_horizon + 1, self.env.env_settings.max_steps) # not sampling as that breaks causality
 
         for batch in samples:
             batch_state_list = []
