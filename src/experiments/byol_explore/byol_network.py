@@ -35,27 +35,23 @@ class ByolExploreNetwork(nn.Module):
         state_encoding = self.encoder_model.encode_state(state_buffer.view(B * T, C)).view(B, T, self.latent_rep_dim)
         # state_projection = self.projection_model(state_encoding)
 
-        h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_encoding)
-        #h_closed_hist = self._calc_closed_loop_history_states(B, T, action_buffer, state_buffer)
+        h_closed_hist = self._calc_closed_loop_history_states(B, action_buffer, state_encoding)
         byol_loss, intrinsic_rewards = self._calc_loss_and_intrinsic_rewards(B, T, C, h_closed_hist, action_buffer, state_buffer)
 
         return byol_loss, intrinsic_rewards
 
-    def _calc_closed_loop_history_states(self, batch_dim: int, end_time: int, action_buffer: torch.Tensor, state_encoding: torch.Tensor) -> torch.Tensor:
-        h_hist = []
+    def _calc_closed_loop_history_states(self, batch_dim: int, action_buffer: torch.Tensor, state_encoding: torch.Tensor) -> torch.Tensor:
         h_closed = torch.zeros(batch_dim, self.hidden_dim, device=self.DEVICE, dtype=torch.float32)
-        for t in range(end_time):
-            previous_action = nn.functional.one_hot(action_buffer[:, t], self.action_dim).to(torch.float32).to(self.DEVICE)
-            input = torch.cat([state_encoding[:,t], previous_action], dim=-1).to(self.DEVICE) # (B, latent_rep_dim + ACTION_EMBEDDING_DIM)
-            h_closed = self.close_gru(input, h_closed)
-            h_hist.append(h_closed)
-        return torch.stack(h_hist, dim=1) # (B, T, hidden_dim)
+        previous_action = nn.functional.one_hot(action_buffer[:, 0], self.action_dim).to(torch.float32).to(self.DEVICE)
+        input = torch.cat([state_encoding[:,0], previous_action], dim=-1).to(self.DEVICE) # (B, latent_rep_dim + ACTION_EMBEDDING_DIM)
+        h_closed = self.close_gru(input, h_closed)
+        return h_closed # (B, hidden_dim)
     
     def _calc_loss_and_intrinsic_rewards(self,
                                          batch_dim: int,
                                          end_time: int,
                                          channel: int,
-                                         h_hist: torch.Tensor,
+                                         h_closed: torch.Tensor,
                                          action_buffer: torch.Tensor,
                                          state_buffer: torch.Tensor) -> tuple[torch.Tensor | float, torch.Tensor]:
         cos_loss = 0
@@ -65,7 +61,7 @@ class ByolExploreNetwork(nn.Module):
         # For reasons of efficency, we could progressivly shift the starting state over the trajecorie
         # thereby learning more from a single trajectory, though, this does also progressivly reduce the time horizon
         # for t in range(end_time):
-        h_open = h_hist[:, 0] # b_t
+        h_open = h_closed # b_t
         for k in range(1, self.time_horizon + 1):
             if k >= end_time:
                 break
