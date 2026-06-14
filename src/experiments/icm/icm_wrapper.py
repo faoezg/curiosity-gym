@@ -19,7 +19,7 @@ class ICMCuriosityWrapper(IntrinsicMotivationModelWrapper):
     ):
         super().__init__(env, icm, device, intrinsic_reset_threshold, allow_global_state_reset, max_training_steps, max_episodes, use_rgb_step)
         self.intrinsic_model: ICMModel = self.intrinsic_model
-        self.batch_size = 32 
+        self.batch_size = 128 
         self.reward_normalizer = RewardNormalizer()
     
     def reset(self, **kwargs):

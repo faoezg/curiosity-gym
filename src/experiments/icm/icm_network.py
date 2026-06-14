@@ -84,8 +84,8 @@ class ICMNetwork(nn.Module):
             phi = phi.unsqueeze(0)
             phi_next = phi_next.unsqueeze(0)
           
-          phi = phi * 10
-          phi_next = phi_next * 10 
+          phi = phi
+          phi_next = phi_next 
           forward_pred = self._pass_through_forward_model(phi, action)
           inv_logits = self._pass_through_inverse_model(phi, phi_next)
           return phi, phi_next, forward_pred, inv_logits

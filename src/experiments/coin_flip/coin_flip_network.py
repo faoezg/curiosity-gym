@@ -27,9 +27,9 @@ class CoinFlipNetwork(nn.Module):
     def _init_flip_network(self, state_dim: int, hidden_dim: int, d_dim: int):
         return nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
-            nn.LeakyReLU(),
+            nn.Tanh(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.LeakyReLU(),
+            nn.Tanh(),
             nn.Linear(hidden_dim, d_dim)
         )
     
@@ -52,7 +52,7 @@ class CoinFlipNetwork(nn.Module):
 
         final_coin_flip_preds = coin_flip_preds + coin_flip_priors
 
-        pseudo_count = (1/self.d_dim) * torch.mean(final_coin_flip_preds ** 2)
+        pseudo_count = (1/self.d_dim) * torch.mean(final_coin_flip_preds ** 2, dim=-1)
 
         one_over_counts = torch.sqrt(pseudo_count) # inverse of pseudo-count
 

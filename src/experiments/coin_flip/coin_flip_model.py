@@ -78,9 +78,9 @@ class CoinFlipModel(IntrinsicMotivationModel):
                 intrinsic_reward_tensor = one_over_counts
                 intrinsic_reward = intrinsic_reward_tensor.squeeze().detach().item()
 
-                if with_training:
-                    self.reward_normalizer.normalize_reward(intrinsic_reward)
-
+                if (not with_training):
+                    intrinsic_reward = self.reward_normalizer.normalize_reward(intrinsic_reward)
+        
         return intrinsic_reward * self.reward_scale
 
     
@@ -94,13 +94,16 @@ class CoinFlipModel(IntrinsicMotivationModel):
             rademacher_sample_batch.append(sample.coin_flip_vector) # type: ignore
         
         state_batch = torch.stack(state_batch).to(self.device)
-        rademacher_sample_batch = torch.from_numpy(np.array(rademacher_sample_batch)).float().to(self.device)
+        rademacher_sample_batch = torch.from_numpy(np.array(rademacher_sample_batch)).float().to(self.device).detach()
         weights_tensor = torch.from_numpy(weights).float().to(self.device)
 
         coin_flip_preds, _, _, one_over_counts = self.coin_flip_network(state_batch)
 
-        loss = nn.functional.mse_loss(coin_flip_preds, rademacher_sample_batch, reduction="none").mean()
-        loss = (loss * weights_tensor.unsqueeze(1)).mean()
+        #loss = nn.functional.mse_loss(coin_flip_preds, rademacher_sample_batch, reduction="none")
+        #loss = torch.sum(loss * weights_tensor.unsqueeze(1), 1).mean()
+
+        element_wise = (coin_flip_preds - rademacher_sample_batch) ** 2
+        loss = (torch.sum(element_wise, dim=1) * weights_tensor).mean()
     
         self.optimizer.zero_grad()
         loss.backward()
