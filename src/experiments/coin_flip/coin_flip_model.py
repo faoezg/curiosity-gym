@@ -78,7 +78,7 @@ class CoinFlipModel(IntrinsicMotivationModel):
                 intrinsic_reward_tensor = one_over_counts
                 intrinsic_reward = intrinsic_reward_tensor.squeeze().detach().item()
 
-                if (not with_training):
+                if (with_training):
                     intrinsic_reward = self.reward_normalizer.normalize_reward(intrinsic_reward)
         
         return intrinsic_reward * self.reward_scale

@@ -40,9 +40,9 @@ def make_coin_flip_env(
                         priority_alpha=priority_alpha,
                         reward_scale=reward_scale,
                         device=device,
-                        update_period=1,
+                        update_period=15,
                         buffer_size=5000,
-                        batch_size=512)
+                        batch_size=128)
 
     new_env = CoinFlipWrapper(
         env=raw_env,
@@ -51,6 +51,6 @@ def make_coin_flip_env(
         max_training_steps=max_training_steps,
         max_episodes=max_episodes)
 
-    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{cfm.name}_{raw_env.unwrapped.name}", episode_trigger=lambda x: x % 1000 == 0)
+    new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{cfm.name}_{raw_env.unwrapped.name}", episode_trigger=lambda x: x % 30 == 0)
 
     return new_env

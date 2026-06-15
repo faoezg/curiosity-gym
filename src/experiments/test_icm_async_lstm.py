@@ -14,6 +14,7 @@ import gymnasium as gym
 import numpy as np
 import gc
 
+# AI CODE
 # ----------------------------------------------------------------------
 # 0️⃣  Global configuration (you can move this to a config file)
 # ---------------------
