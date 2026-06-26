@@ -17,7 +17,7 @@ class ByolExploreWrapper(IntrinsicMotivationModelWrapper):
         max_training_steps: int = 500,
         max_episodes: int = 1000,
         batch_dim = 32,
-        buffer_size = 50000,
+        buffer_size = 5000,
     ):
         super().__init__(env, byol_explore_model,
                          device,

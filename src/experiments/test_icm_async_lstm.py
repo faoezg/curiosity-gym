@@ -21,7 +21,7 @@ import gc
 from functools import partial
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-NUM_ENVS = 5                     # number of asynchronous workers (SB3 default)
+NUM_ENVS = 1                    # number of asynchronous workers (SB3 default)
 SEED = 42
 TOTAL_TIMESTEPS = 500_000 * NUM_ENVS
 
@@ -233,5 +233,6 @@ if __name__ == "__main__":
 
         gc.collect()
         torch.cuda.empty_cache()
-   
+    
+    vec_env.close()
     print("Training finished – models saved.")

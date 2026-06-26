@@ -28,7 +28,7 @@ def tmp():
     for suffix in MODELS_SUFFIXES:
         for prefix in ENV_PREFIXES:
             vec_env =  make_vec_env(f"{prefix}-{suffix}", n_envs=1)
-            model = PPO("MlpPolicy", vec_env, verbose=0, device="cpu")
+            model = PPO("MlpPolicy", vec_env, verbose=0, device="cpu", seed=42)
             model.learn(total_timesteps=500_000)
             time.sleep(30) # wait till all I/O Operations finish
             vec_env.close()

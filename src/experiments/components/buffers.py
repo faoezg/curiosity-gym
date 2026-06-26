@@ -19,7 +19,8 @@ class PriorizedTransition(Transition):
 
 
 class ReplayBuffer():
-    def __init__(self, size: int) -> None:
+    def __init__(self, size: int, seed = 42) -> None:
+        random.seed(seed)
         self.size = size
         self.buffer: deque = deque(maxlen=size)
     

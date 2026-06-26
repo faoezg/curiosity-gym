@@ -99,6 +99,8 @@ class GridEngine(gym.Env, ABC):
         self.observation_space = self.agent_pov.observation_space
         """Space of possible observations returned by the environment."""
 
+        sns.set_theme(font_scale=2, style="white")
+
 
     @abstractmethod
     def check_task(self) -> bool:

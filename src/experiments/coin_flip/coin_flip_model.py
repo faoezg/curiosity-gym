@@ -22,6 +22,8 @@ class CoinFlipModel(IntrinsicMotivationModel):
                  p_replace: float = 1.0,
                  device: device | str = "cuda" if torch.cuda.is_available() else "cpu"
                  ) -> None:
+        super().__init__("cfn")
+
         self.device = device
         self.min_req_buffer_population = min_req_buffer_population
         self.update_period = update_period
@@ -41,7 +43,6 @@ class CoinFlipModel(IntrinsicMotivationModel):
 
         self.reset()
 
-        super().__init__("cfn")
 
     def _np_array_to_tensor(self, state: np.ndarray):
         return torch.tensor(state, dtype=torch.float32, device=self.device)

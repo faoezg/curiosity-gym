@@ -18,9 +18,9 @@ from stable_baselines3.common.env_util import make_vec_env
 
 def tmp():
     vec_env =  make_vec_env("SimpleSparseEnv-Icm", n_envs=1)
-    model = PPO("MlpPolicy", vec_env, verbose=0, device="cpu")
+    model = PPO("MlpPolicy", vec_env, verbose=0, device="cpu", seed=42)
     #model = PPO("CnnPolicy", vec_env, verbose=0, device="cpu", learning_rate=1e-3)
-    model.learn(total_timesteps=500_000)
+    model.learn(total_timesteps=5)
     vec_env.close()
 
 tmp()

@@ -24,7 +24,7 @@ class Serialiser():
         self.out_dir.mkdir(parents=True, exist_ok=True)
 
     def make_reward_figure(self, reward, step, title, reward_prefix, with_markers = False):
-
+        sns.set_theme(font_scale=1)
         with sns.axes_style("whitegrid", self.rc):
             fig, axe = plt.subplots()
             if (with_markers):
@@ -41,7 +41,7 @@ class Serialiser():
             return fig
 
     def make_reward_figure_scatter(self, reward, step, title, reward_prefix, with_markers = False):
-
+        sns.set_theme(font_scale=1)
         with sns.axes_style("whitegrid", self.rc):
             fig, axe = plt.subplots()
 
@@ -54,7 +54,7 @@ class Serialiser():
         
         
     def make_reward_figure_with_vertical(self, reward, step, title, reward_prefix, vertical_x_pos, vertical_label, with_markers = False):
-
+        sns.set_theme(font_scale=1)
         with sns.axes_style("whitegrid", self.rc):
             fig, axe = plt.subplots()
             if (with_markers):
@@ -75,7 +75,7 @@ class Serialiser():
             return fig
 
     def make_reward_figure_with_vertical_scatter(self, reward, step, title, reward_prefix, vertical_x_pos, vertical_label, with_markers = False):
-
+        sns.set_theme(font_scale=1)
         with sns.axes_style("whitegrid", self.rc):
             fig, axe = plt.subplots()
             axe.scatter(step, reward, color="tab:blue", label=f"{reward_prefix} Reward", linewidths=0.75, rasterized=True)
@@ -90,7 +90,7 @@ class Serialiser():
             return fig
 
     def make_exploration_figure(self, cells, total_cells, step, title):
-
+        sns.set_theme(font_scale=1)
         with sns.axes_style("whitegrid", self.rc):
             fig, axe = plt.subplots()
             axe.plot(step, cells, color="tab:blue", label="Besuchte Zellen", rasterized=True)
