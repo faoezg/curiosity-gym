@@ -1,5 +1,4 @@
 import gymnasium as gym
-import torch
 
 from curiosity_gym.core.gridengine import GridEngine
 from .icm_model import ICMModel 

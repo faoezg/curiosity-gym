@@ -309,7 +309,7 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
         for cord in self.all_walkable_cords:
             total_visited_states += self.state_space_visited[np.array(cord).tobytes()]
         lower_bound_visited_state_space = total_visited_states / len(self.all_walkable_cords)
-        avg_extrinsic_reward = self.total_extrinsic_reward / self.training_step
+        avg_extrinsic_reward = self.total_extrinsic_reward / self.total_training_step
         avg_extrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_extrinsic_rewards]) / len(self.last_n_extrinsic_rewards)
         avg_intrinsic_reward_last_10_episodes = sum([reward for reward in self.last_n_intrinsic_rewards]) / len(self.last_n_intrinsic_rewards)
 

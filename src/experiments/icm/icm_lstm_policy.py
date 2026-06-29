@@ -5,13 +5,6 @@ import torch.nn.functional as F
 from experiments.components.icm_encoder import ICMEncoder
 
 # AI SUPPORTED CODE - OpenAI GPT OSS 120B
-
-#def normalized_columns_initializer(tensor: torch.Tensor, std: float = 1.0) -> None:
-#    out = np.random.randn(*tensor.shape).astype(np.float32)
-#    out *= std / np.sqrt(np.square(out).sum(axis=0, keepdims=True) + 1e-8)
-#    with torch.no_grad():
-#        tensor.copy_(torch.from_numpy(out))
-
 class IcmLSTMPolicy(nn.Module):
     def __init__(
             self,

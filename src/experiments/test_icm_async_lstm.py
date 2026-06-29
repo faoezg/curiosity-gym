@@ -14,10 +14,8 @@ import gymnasium as gym
 import numpy as np
 import gc
 
-# AI CODE
-# ----------------------------------------------------------------------
-# 0️⃣  Global configuration (you can move this to a config file)
-# ---------------------
+# AI CODE - THIS ENTIRE FILE WAS ALMOST COMPLETLY, BESIDES SOME BUGFIXES, GENERATED USING AI
+# THE MODEL USED WAS ChatGPT OSS 120B
 from functools import partial
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -107,24 +105,12 @@ def make_env(rank: int, shared_icm: ICMModel) -> gym.Env:
     return env
 
 
-# ------------------------------------------------------------------
-# 1️⃣  Main entry point – everything that spawns processes lives here
-# ------------------------------------------------------------------
+
 if __name__ == "__main__":
-    # --------------------------------------------------------------
-    # (a)  Make the ICM model *once* and share its memory
-    # --------------------------------------------------------------
     shared_icm, state_dim, action_dim, latent_rep_dim, stride = _build_shared_icm()
 
-    # --------------------------------------------------------------
-    # (b)  Build a list of environment factories for SubprocVecEnv
-    # --------------------------------------------------------------
     env_fns = [partial(make_env, i, shared_icm) for i in range(NUM_ENVS)]
     vec_env = SubprocVecEnv(env_fns)          # ← asynchronous workers
-
-    # --------------------------------------------------------------
-    # (c)  Create the SB3 learner (A2C or A3C)
-    # --------------------------------------------------------------
 
     policy = IcmLSTMPolicy(
         device=DEVICE,
