@@ -28,12 +28,13 @@ class IntrinsicMotivationModelWrapper(gym.Wrapper):
                  allow_global_state_reset: bool = False,
                  max_training_steps: int = 500,
                  max_episodes: int = 1000,
-                 use_rgb_state: bool = False) -> None:
+                 use_rgb_state: bool = False,
+                 buffer_size: int = 10000) -> None:
         super().__init__(env)
         self.env: GridEngine | gym.Env = self.env.unwrapped # getting ride of bad type hint as casting isn't a real thing in python
         self.intrinsic_model = intrinsic_model
         self.device = device
-        self.replay_buffer = ReplayBuffer(size=10000)
+        self.replay_buffer = ReplayBuffer(size=buffer_size)
         self.rollout_buffer = deque(maxlen=20)
         self.use_rgb_state = use_rgb_state
 

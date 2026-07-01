@@ -49,7 +49,8 @@ def make_coin_flip_env(
         cfm=cfm,
         device=torch.device(device),
         max_training_steps=max_training_steps,
-        max_episodes=max_episodes)
+        max_episodes=max_episodes,
+        buffer_size=1) # effectivly disables the buffer of the super class wraper, as CFN as its own internal piroritised buffer
 
     new_env = gym.wrappers.RecordVideo(new_env, f"videos/tmp", name_prefix=f"{cfm.name}_{raw_env.unwrapped.name}", episode_trigger=lambda x: x % 1000 == 0)
 

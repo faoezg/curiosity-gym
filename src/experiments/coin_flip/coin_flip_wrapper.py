@@ -12,9 +12,10 @@ class CoinFlipWrapper(IntrinsicMotivationModelWrapper):
         intrinsic_reset_threshold: float = 0.5,
         allow_global_state_reset: bool = False,
         max_training_steps: int = 500,
-        max_episodes: int = 1000
-    ):
-        super().__init__(env, cfm, device, intrinsic_reset_threshold, allow_global_state_reset, max_training_steps, max_episodes)
+        max_episodes: int = 1000,
+        buffer_size: int = 1,
+        ):
+        super().__init__(env, cfm, device, intrinsic_reset_threshold, allow_global_state_reset, max_training_steps, max_episodes, buffer_size=buffer_size)
         self.intrinsic_model: CoinFlipModel = self.intrinsic_model
     
     def reset(self, **kwargs):
