@@ -51,16 +51,6 @@ class UnifiedCountModel(IntrinsicMotivationModel):
         return prob
     
     def _calc_cell_visitation_prob(self, state: bytes, observation_count: int = 0) -> float:
-        """
-        Docstring for _calc_current_state_visitation_prob
-        
-        :param cell: current state of the env
-        :type cell: bytes
-        :param observation_count: the amount of new data samples, that is the amount of observation of a given state since the latest update
-        :type: int
-        :return: rho(cell) - visitation probability of the cell
-        :rtype: float
-        """
         pseudo_count = self.visitation_dict[state] + observation_count + self.prior # + prior if state is unvisited
         total_visited_states = self.total_visited_states + observation_count + self.prior
 

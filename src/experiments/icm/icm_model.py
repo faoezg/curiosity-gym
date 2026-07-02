@@ -8,19 +8,6 @@ from .icm_network import ICMNetwork
 
 class ICMModel(IntrinsicMotivationModel):
     """Very basic ICM implementation following Pathak et. al. 2017 - Curiosity-driven Exploration by Self-supervised PredictionSelf-Supervised
-
-    Parameters
-    ----------
-    state_dim : int
-        Dimension of the state-space, that is, the observation-space of the env
-    action_dim: int
-        Dimenstion of the action-space
-    hidden_dim: int
-        Dimension of the hidden layer of the encoder, forward and invers model
-    beta: float
-        Weighting of the inverse loss
-    eta: float
-        Scaler of the intrinsic reward
     """
     def __init__(self,
                  device: device | str,
