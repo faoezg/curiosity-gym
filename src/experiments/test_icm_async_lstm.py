@@ -15,7 +15,7 @@ import numpy as np
 import gc
 
 # AI CODE - THIS ENTIRE FILE WAS ALMOST COMPLETLY, BESIDES SOME BUGFIXES, GENERATED USING AI
-# THE MODEL USED WAS ChatGPT OSS 120B
+# THE MODEL USED WAS ChatGPT OSS 120B PROVIDED BY KISSKI CHATAI
 from functools import partial
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

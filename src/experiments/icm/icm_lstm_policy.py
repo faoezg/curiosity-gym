@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from experiments.components.icm_encoder import ICMEncoder
 
-# AI SUPPORTED CODE - OpenAI GPT OSS 120B
+# AI SUPPORTED CODE - OpenAI GPT OSS 120B PROVIDED BY KISSKI CHATAI
 class IcmLSTMPolicy(nn.Module):
     def __init__(
             self,
